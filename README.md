@@ -233,29 +233,6 @@ Use **Import from RGrid R script** to restore the workbook in RGrid.
 
 Formulas, plots, and RGrid metadata are intentionally omitted from these formats.
 
-## GitHub release checklist
-
-1. Create a repository and copy this project into its root.
-2. Review `LICENSE`, `LICENSES.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
-3. Commit the source and push the `main` branch.
-4. Enable GitHub Pages with **GitHub Actions** as its source.
-5. Confirm the Pages deployment in the repository Actions tab.
-6. Create a `v0.8.0` tag and use `RELEASE_NOTES.md` for the GitHub release description.
-7. Test webR initialization, a formula, a CSV import, an Excel import, and an RGrid R-script round trip on the deployed URL.
-
-Example commands:
-
-```bash
-git init
-git add .
-git commit -m "Release RGrid 0.8.0"
-git branch -M main
-git remote add origin https://github.com/OWNER/REPOSITORY.git
-git push -u origin main
-git tag -a v0.8.0 -m "RGrid 0.8.0"
-git push origin v0.8.0
-```
-
 ## Static dependencies
 
 - webR 0.6.0 is loaded from the official webR CDN.
