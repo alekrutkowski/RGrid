@@ -1,0 +1,15 @@
+{
+  "name": "rgrid-webr",
+  "version": "0.8.0",
+  "private": true,
+  "description": "Static reactive spreadsheet SPA powered locally by webR, with R formulas.",
+  "scripts": {
+    "check:js": "cp app.js /tmp/rgrid-app.mjs && node --check /tmp/rgrid-app.mjs",
+    "check:static": "python tests/static_check.py",
+    "check": "npm run check:js && npm run check:static",
+    "serve": "python serve.py"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

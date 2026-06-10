@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>RGrid help and keyboard cheatsheet</title>
+  <style>
+    :root { color-scheme:light dark; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --green:#116b43; --line:#d7ded9; --surface:#fff; --soft:#f5f8f6; --ink:#17231c; --muted:#607068; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#edf2ef; }
+    main { width:min(1180px,96vw); margin:24px auto; padding:30px clamp(20px,4vw,54px); border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:0 14px 38px rgba(22,60,39,.10); }
+    h1 { margin:0 0 8px; color:var(--green); font-size:clamp(25px,3vw,38px); }
+    h2 { margin-top:30px; color:var(--green); font-size:20px; }
+    h3 { margin:18px 0 7px; font-size:15px; }
+    p, li { line-height:1.58; }
+    .lead { max-width:850px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr)); gap:18px; }
+    .card { min-width:0; padding:17px 18px; border:1px solid var(--line); border-radius:11px; background:var(--soft); }
+    pre { max-width:100%; margin:8px 0 0; padding:13px 15px; overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--surface); white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.52 "Cascadia Code",Consolas,monospace; }
+    code { font-family:"Cascadia Code",Consolas,monospace; }
+    .keys { display:grid; grid-template-columns:minmax(110px,max-content) minmax(0,1fr); gap:9px 18px; align-items:center; }
+    kbd { justify-self:start; max-width:100%; padding:3px 8px; border:1px solid #aeb9b2; border-bottom-width:2px; border-radius:5px; background:var(--surface); font:12px "Cascadia Code",Consolas,monospace; white-space:normal; }
+    a { color:var(--green); }
+    .note { padding:12px 14px; border-left:4px solid var(--green); background:var(--soft); }
+    @media (prefers-color-scheme:dark) { :root { --green:#79d6a4; --line:#46534c; --surface:#18201c; --soft:#202a25; --ink:#eef7f1; --muted:#b3c0b8; } body{background:#111613;} }
+    @media (max-width:620px) { main{width:100%;min-height:100vh;margin:0;border:0;border-radius:0;padding:22px 16px;} .keys{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+<main>
+  <h1>RGrid help and keyboard cheatsheet</h1>
+  <p class="lead">RGrid is a local, reactive browser spreadsheet powered by webR. Formulas use R, while worksheet references are supplied through <code>ref()</code>.</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Formula essentials</h2>
+      <pre>=mean(ref("A1:A10"), na.rm = TRUE)
+=ref("D3#")
+=ref("R1C1:R8C7")
+={library(magrittr); rnorm(100) %>% matrix(ncol = 2)}
+=function(x) x + 3
+=\(x) x + 3</pre>
+      <p>Names created in <strong>Name manager</strong> can refer to ranges or hold R values such as functions and lists.</p>
+    </section>
+
+    <section class="card">
+      <h2>Function help</h2>
+      <p>Place the formula cursor on a function name and press <kbd>F1</kbd>. On <code>ref()</code>, RGrid opens a styled information box inside the app and explains its case-insensitive Excel-style references, including <code>A1</code>, <code>R1C1</code>, <code>A1:G5</code>, <code>B8#</code>, and names defined in Name manager, including named expressions. Core R functions open their R manual page, while functions from other packages open the corresponding CRAN reference-manual anchor.</p>
+      <p>Examples include <code>lm</code>, <code>capture.output</code>, <code>eurodata::importData</code>, or an unqualified function from a package loaded in the formula.</p>
+      <p>Click the <strong>fx</strong> icon beside the formula editor to open the <a href="https://rdrr.io/r/" target="_blank" rel="noreferrer">R function index</a>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Import data</h2>
+      <p><strong>Import data</strong> accepts Excel, CSV, and TSV files:</p>
+      <ul>
+        <li>Every Excel worksheet becomes a new RGrid worksheet.</li>
+        <li>A CSV or TSV file becomes one new worksheet.</li>
+        <li>Only values are imported. Excel formulas are not imported as R formulas.</li>
+        <li>Imported text remains text even when it resembles an R expression.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Object display</h2>
+      <p><strong>Show element names</strong> controls vector names, row names, column names, and dimension names.</p>
+      <p>Double-click a list cell to inspect a collapsible tree. Use <strong>Expand all</strong> to reveal every nested branch at once. Double-click a plot cell to reveal its plot.</p>
+    </section>
+  </div>
+
+  <h2>Keyboard</h2>
+  <div class="keys">
+    <kbd>Enter</kbd><span>Commit the formula and move down.</span>
+    <kbd>Alt+Enter</kbd><span>Insert a line break in the formula editor.</span>
+    <kbd>F1</kbd><span>Open documentation for the function under the formula cursor.</span>
+    <kbd>F2</kbd><span>Edit the active cell formula.</span>
+    <kbd>Esc</kbd><span>Cancel formula editing or close the list tree.</span>
+    <kbd>Ctrl+C / Ctrl+V / Ctrl+X</kbd><span>Copy, paste, or cut formulas and values.</span>
+    <kbd>Ctrl+Z / Ctrl+Y</kbd><span>Undo or redo.</span>
+    <kbd>Shift+Arrow</kbd><span>Extend the selection by one cell.</span>
+    <kbd>Ctrl+Arrow</kbd><span>Jump to the next data-region edge.</span>
+    <kbd>Ctrl+Shift+Arrow</kbd><span>Extend the selection to a data-region edge.</span>
+    <kbd>Delete / Backspace</kbd><span>Clear selected cells.</span>
+    <kbd>Selected code + ' " ( [ {</kbd><span>Wrap selected formula code in the matching pair.</span>
+  </div>
+
+  <h2>References and selection</h2>
+  <p>Drag across cells, or use Shift with arrow keys, while editing a formula to insert a range reference. Selecting the complete footprint of a dynamic array inserts a spill reference such as <code>ref("D3#")</code>.</p>
+  <p><strong>Toggle A1/R1C1</strong> switches column headings, the name box, and newly inserted formula references between forms such as <code>A1:G8</code> and <code>R1C1:R8C7</code>. Existing formulas continue to work in either notation.</p>
+
+  <h2>Plots</h2>
+  <p>Base R, ggplot2, and lattice plots generated by formulas appear in the resizable <strong>Plots</strong> pane. Use <strong>Set plot size</strong> to select the final bitmap dimensions.</p>
+
+  <h2>Storage and export</h2>
+  <p>RGrid autosaves the exact workbook in browser local storage. It can export an executable and restorable RGrid R script, calculated CSV files in a ZIP archive, or a calculated-value-only Excel workbook.</p>
+
+  <p class="note">On GitHub Pages, webR uses its PostMessage communication channel because Pages cannot add the cross-origin-isolation headers used by the faster SharedArrayBuffer channel. Calculations still run locally in the browser.</p>
+
+  <h2>Further documentation</h2>
+  <p><a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noreferrer">webR documentation</a> · <a href="README.md">RGrid README</a> · <a href="https://rdrr.io/r/" target="_blank" rel="noreferrer">R function index</a></p>
+</main>
+</body>
+</html>
