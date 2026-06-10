@@ -1,6 +1,8 @@
 # RGrid
 
-RGrid is a static, browser-only reactive spreadsheet with an Excel-like grid and R as its formula language. Formulas run locally through webR. There is no application server and workbook data is not sent to a calculation backend.
+## Accessible at https://alekrutkowski.github.io/RGrid/
+
+RGrid is a static, browser-only reactive spreadsheet with an Excel-like grid and R as its formula language. Formulas run locally through [webR](https://docs.r-wasm.org/webr). There is no application server and workbook data is not sent to a calculation backend. The app has been made with GPT-5.5-Thinking.
 
 ![RGrid 0.8.0 interface](docs/rgrid-v8.png)
 
