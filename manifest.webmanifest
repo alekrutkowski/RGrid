@@ -1,12 +1,11 @@
 {
-  "name": "RGrid – reactive R spreadsheet",
+  "name": "RGrid",
   "short_name": "RGrid",
-  "description": "A static browser spreadsheet powered locally by webR, using R as the formula language.",
+  "description": "A browser spreadsheet powered by R and webR",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#edf2ef",
-  "theme_color": "#116b43",
+  "background_color": "#ffffff",
+  "theme_color": "#18543a",
   "icons": [
     {
       "src": "favicon.svg",

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Serve the static RGrid files with webR-friendly isolation headers."""
 
+from argparse import ArgumentParser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-import argparse
 import os
 
 
@@ -17,7 +17,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8080, type=int)
     args = parser.parse_args()

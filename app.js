@@ -19,6 +19,7 @@ const els = {
   app: $('#app'),
   grid: $('#grid'),
   gridViewport: $('#gridViewport'),
+  cellTooltip: $('#cellTooltip'),
   sheetTabs: $('#sheetTabs'),
   nameBox: $('#nameBox'),
   formulaEditor: $('#formulaEditor'),
@@ -59,6 +60,7 @@ const els = {
   busyOverlay: $('#busyOverlay'),
   busyText: $('#busyText'),
   themeBtn: $('#themeBtn'),
+  exampleWorkbookBtn: $('#exampleWorkbookBtn'),
   helpBtn: $('#helpBtn'),
   helpDialog: $('#helpDialog'),
   refHelpDialog: $('#refHelpDialog'),
@@ -82,13 +84,14 @@ const runtime = {
   packageStatus: new Map(),
 };
 
-let workbook = loadWorkbook() ?? createExampleWorkbook();
+let workbook = loadWorkbook() ?? createBlankWorkbook();
 let computed = new Map();
 let spillOwners = new Map();
 let displayValues = new Map();
 let plotsByCell = new Map();
 let cellElements = new Map();
 let previousSelectedAddresses = new Set();
+let tooltipCell = null;
 let saveTimer = null;
 let selection = { r1: 1, c1: 1, r2: 1, c2: 1 };
 const history = { undo: [], redo: [], limit: 100, restoring: false };
@@ -325,35 +328,300 @@ function uid(prefix = 'id') {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function createExampleWorkbook() {
+function createBlankWorkbook() {
   const sheetId = uid('sheet');
   return {
     formatVersion: FORMAT_VERSION,
     title: 'RGrid Workbook',
     activeSheetId: sheetId,
-    seq: 10,
-    names: {
-      revenue: { kind: 'range', sheetId, ref: 'A2:A3' },
-    },
+    seq: 0,
+    names: {},
     view: { showElementNames: true, referenceStyle: 'A1' },
     sheets: [{
       id: sheetId,
       name: 'Sheet1',
       rows: DEFAULT_ROWS,
       cols: DEFAULT_COLS,
-      cells: {
-        A1: { input: 'Revenue', seq: 1 },
-        A2: { input: '100', seq: 2 },
-        A3: { input: '120', seq: 3 },
-        B1: { input: 'Growth', seq: 4 },
-        B2: { input: '=ref("A3") / ref("A2") - 1', seq: 5 },
-        D1: { input: '=matrix(1:12, nrow = 4, byrow = TRUE)', seq: 6 },
-        H1: { input: 'Column sums', seq: 7 },
-        H2: { input: '=colSums(ref("D1#"))', seq: 8 },
-        A5: { input: 'Named range mean', seq: 9 },
-        B5: { input: '=mean(ref("revenue"))', seq: 10 },
-      },
+      cells: {},
     }],
+  };
+}
+
+function createExampleWorkbook() {
+  const sheetIds = {
+    start: uid('sheet'),
+    references: uid('sheet'),
+    data: uid('sheet'),
+    objects: uid('sheet'),
+    plots: uid('sheet'),
+  };
+  let seq = 0;
+  const makeCells = (entries) => Object.fromEntries(entries.map(([address, input, literal = false]) => [
+    address,
+    { input, seq: ++seq, ...((literal || isPlainTextInput(input)) ? { literal: true } : {}) },
+  ]));
+
+  const sheets = [
+    {
+      id: sheetIds.start,
+      name: 'Start Here',
+      rows: DEFAULT_ROWS,
+      cols: DEFAULT_COLS,
+      cells: makeCells([
+        ['A1', 'RGrid example workbook'],
+        ['A2', 'Five focused worksheets demonstrate formulas, references, imported data, R objects, pivots, and plots.'],
+        ['A3', 'Select any formula cell to read its commented R code in the formula bar. F1 opens help for the function under the cursor.'],
+        ['A5', 'Plain value'],
+        ['B5', '42'],
+        ['A6', 'R formula using ref()'],
+        ['B6', '=sqrt(ref("B5"))'],
+        ['A8', 'Dynamic spill'],
+        ['B8', `={
+  # A vector returned by R spills down from this anchor cell.
+  seq(10, 50, by = 10)
+}`],
+        ['D5', 'Sum of the spill'],
+        ['E5', '=sum(ref("B8#"))'],
+        ['D6', 'Named range mean'],
+        ['E6', '=mean(ref("example_numbers"))'],
+        ['D7', 'Named expression'],
+        ['E7', '=ref("vat_rate")'],
+        ['D8', 'Named function'],
+        ['E8', '=ref("double_it")(ref("B5"))'],
+        ['A15', '**Workbook tips**'],
+        ['A16', '• Use the Name manager for named ranges, constants, and functions.'],
+        ['A17', '• A trailing # in ref("B8#") means the complete dynamic spill.'],
+        ['A18', '• Double-click a list cell to inspect its tree; click a plot cell to locate its plot.'],
+        ['A19', '• Imported formula-looking text is kept literal. The Objects & Import sheet shows this case.'],
+        ['A21', 'Some examples install CRAN packages or fetch a very small public dataset the first time they calculate.'],
+        ['A23', 'Text formatting: **bold**, __also bold__, *italic*, and _also italic_.'],
+      ]),
+    },
+    {
+      id: sheetIds.references,
+      name: 'References',
+      rows: DEFAULT_ROWS,
+      cols: DEFAULT_COLS,
+      cells: makeCells([
+        ['A1', 'ref(): addresses, ranges, spills, names, and preserved objects'],
+        ['A2', 'References are case-insensitive and may use A1 or R1C1 notation. Sheet names containing spaces are quoted.'],
+        ['A4', 'Month'], ['B4', 'Sales'],
+        ['A5', 'Jan'], ['B5', '120'],
+        ['A6', 'Feb'], ['B6', '150'],
+        ['A7', 'Mar'], ['B7', '=NA_real_'],
+        ['A8', 'Apr'], ['B8', '180'],
+        ['D4', 'Single A1 cell'], ['E4', '=ref("B5")'],
+        ['D5', 'Case-insensitive address'], ['E5', '=ref("b6")'],
+        ['D6', 'R1C1 address'], ['E6', '=ref("R8C2")'],
+        ['D7', 'Rectangular range'], ['E7', '=ref("A4:B8")'],
+        ['H4', 'Cross-sheet reference'], ['I4', '=ref("\'Start Here\'!B5")'],
+        ['H5', 'Cross-sheet dynamic spill'], ['I5', '=ref("\'Start Here\'!B8#")'],
+        ['H11', 'Named range'], ['I11', '=ref("example_numbers")'],
+        ['J11', 'Named expression'], ['K11', '=ref("vat_rate")'],
+        ['J12', 'Named function'], ['K12', '=ref("double_it")(5)'],
+        ['A12', 'Function stored in a cell'],
+        ['B12', '=function(x) x + 3'],
+        ['A13', 'Call the stored function'],
+        ['B13', '=ref("B12")(10)'],
+        ['A16', 'Preserved data-frame object'],
+        ['B16', `={
+  # Data frames spill into cells, while ref() can still recover the original object.
+  data.frame(item = c("A", "B", "C"), amount = c(4, 7, 2), active = c(TRUE, FALSE, TRUE))
+}`],
+        ['F16', 'Subset of preserved object'],
+        ['G16', '=ref("B16#")[ref("B16#")$active, c("item", "amount"), drop = FALSE]'],
+        ['A22', 'Reference to a blank cell'], ['B22', '=ref("C22")'],
+        ['A23', 'Literal formula-looking text'], ['B23', '=mean(1:3)', true],
+        ['A25', 'Corner cases to try safely'],
+        ['A26', 'Put a value inside a spill destination to see #SPILL!, then remove it.'],
+        ['A27', 'Circular references are reported as #CYCLE!; they are described here rather than activated in the example workbook.'],
+        ['A28', 'Invalid addresses, missing names, and referenced errors are reported as #REF! with a detailed message.'],
+      ]),
+    },
+    {
+      id: sheetIds.data,
+      name: 'Data & Pivot',
+      rows: DEFAULT_ROWS,
+      cols: DEFAULT_COLS,
+      cells: makeCells([
+        ['A1', 'Data tables, a dcast pivot table, and a small Eurostat import'],
+        ['A2', 'The formulas below keep their R object classes while displaying rectangular results in the grid.'],
+        ['A4', 'Long sales data (data.table)'],
+        ['A5', `={
+  # This long table is the input for the pivot formulas to the right.
+  data.table::data.table(
+    region = rep(c("North", "South"), each = 6),
+    product = rep(rep(c("Hardware", "Services"), each = 3), 2),
+    quarter = rep(paste0("Q", 1:3), 4),
+    sales = c(24, 29, 31, 18, 22, 27, 20, 25, 28, 16, 21, 24)
+  )
+}`],
+        ['F4', 'Pivot table: region + product by quarter'],
+        ['F5', `={
+  # data.table::dcast() is RGrid's pivot-table pattern.
+  long <- data.table::as.data.table(ref("long_sales"))
+  data.table::dcast(
+    long,
+    region + product ~ quarter,
+    value.var = "sales",
+    fun.aggregate = sum,
+    fill = 0
+  )
+}`],
+        ['F12', 'Pivot with two aggregate functions'],
+        ['F13', `={
+  # Multiple functions create clearly named value columns.
+  long <- data.table::as.data.table(ref("A5#"))
+  data.table::dcast(
+    long,
+    region ~ quarter,
+    value.var = "sales",
+    fun.aggregate = list(sum, mean),
+    fill = 0
+  )
+}`],
+        ['A21', 'Small Eurostat data request'],
+        ['A22', 'This formula requests only two countries, two years, and one demographic slice. It needs network access.'],
+        ['A23', `={
+  # eurodata::importData() accepts a dataset code and a named filter list.
+  # TIME_PERIOD is deliberately narrow so the returned data stays small.
+  eurodata::importData(
+    "demo_pjan",
+    filters = list(
+      freq = "A",
+      age = "TOTAL",
+      sex = "T",
+      unit = "NR",
+      geo = c("LU", "DE"),
+      TIME_PERIOD = 2022:2023
+    )
+  )
+}`],
+        ['K21', 'Use imported data in another formula'],
+        ['K22', 'After the Eurostat result is available, this selects a compact set of columns when they exist.'],
+        ['K23', `={
+  # ref() recovers the imported object, not merely its formatted cell text.
+  x <- ref("A23#")
+  wanted <- intersect(c("geo", "TIME_PERIOD", "values", "status"), names(x))
+  x[, wanted, drop = FALSE]
+}`],
+      ]),
+    },
+    {
+      id: sheetIds.objects,
+      name: 'Objects & Import',
+      rows: DEFAULT_ROWS,
+      cols: DEFAULT_COLS,
+      cells: makeCells([
+        ['A1', 'R objects, list inspection, and file-import behavior'],
+        ['A2', 'Lists remain single-cell objects. Double-click the list cell to open RGrid\'s expandable object viewer.'],
+        ['A4', 'Nested R list'],
+        ['B4', `=list(
+  title = "Quarterly assumptions",
+  scalars = list(vat = 0.21, active = TRUE),
+  scenarios = setNames(c(10, 20, 30), c("low", "base", "high")),
+  table = data.frame(code = c("A", "B"), value = c(1.5, 2.75)),
+  missing = NA_real_
+)`],
+        ['A5', 'Extract a named nested value'], ['B5', '=ref("B4")$scalars$vat'],
+        ['A6', 'Extract by position and name'], ['B6', '=ref("B4")[[3]][["base"]]'],
+        ['A8', 'Named vector'], ['B8', '=setNames(c(12, 15, 9), c("Alpha", "Beta", "Gamma"))'],
+        ['D8', 'Matrix with dimnames'],
+        ['E8', `={
+  m <- matrix(1:6, nrow = 2, byrow = TRUE)
+  dimnames(m) <- list(c("first", "second"), c("x", "y", "z"))
+  m
+}`],
+        ['A13', 'Function object capturing ref()'],
+        ['B13', '=function(x, rate = ref("vat_rate")) x * (1 + rate)'],
+        ['A14', 'Call the function object'], ['B14', '=ref("B13")(100)'],
+        ['A17', 'rio::import() from a tiny temporary CSV'],
+        ['A18', 'This self-contained example writes three rows to a temporary file and imports them by extension.'],
+        ['B19', `={
+  # rio::import() chooses an importer from the file extension.
+  path <- tempfile(fileext = ".csv")
+  writeLines(c("city,value", "Luxembourg,12", "Esch-sur-Alzette,7", "Differdange,5"), path)
+  rio::import(path)
+}`],
+        ['A25', 'RGrid file import'],
+        ['A26', 'Use Import data for CSV, TSV, TXT, XLS, or XLSX files. Each imported table becomes a new worksheet.'],
+        ['A27', 'Leading = text imported from a data file remains text rather than silently becoming a formula.'],
+        ['B28', '=1 + 2', true],
+        ['A30', 'List structure as ordinary text'],
+        ['B30', '=capture.output(str(ref("B4")))'],
+        ['E25', 'Empty-object corner cases'],
+        ['E26', 'Zero-length vector'], ['F26', '=character()'],
+        ['E27', 'NULL'], ['F27', '=NULL'],
+        ['E28', 'Missing scalar'], ['F28', '=NA_real_'],
+      ]),
+    },
+    {
+      id: sheetIds.plots,
+      name: 'Plots',
+      rows: DEFAULT_ROWS,
+      cols: DEFAULT_COLS,
+      cells: makeCells([
+        ['A1', 'Base graphics, multiple plots, ggplot2, and lattice'],
+        ['A2', 'Plot-producing cells get a corner marker. Select a cell to highlight its plots in the plot pane.'],
+        ['A4', 'Base R line plot'],
+        ['B4', `={
+  # Base plots are captured from the graphics device.
+  x <- 1:8
+  plot(x, x^1.5, type = "b", pch = 19, xlab = "Period", ylab = "Index", main = "Base R plot")
+  # Base plotting functions return an invisible helper object, so end with NULL.
+  invisible(NULL)
+}`],
+        ['A8', 'Two base plots from one formula'],
+        ['B8', `={
+  # Every completed page is attached to this cell.
+  old <- par(mfrow = c(1, 2))
+  hist(mtcars$mpg, main = "Miles per gallon", xlab = "mpg")
+  boxplot(mpg ~ factor(cyl), data = mtcars, xlab = "cylinders", ylab = "mpg")
+  par(old)
+  invisible(NULL)
+}`],
+        ['A12', 'Returned ggplot2 object'],
+        ['B12', `={
+  # Returning a ggplot object lets RGrid print and preserve it automatically.
+  d <- data.frame(month = factor(month.abb[1:6], levels = month.abb[1:6]), sales = c(12, 15, 13, 19, 22, 25))
+  ggplot2::ggplot(d, ggplot2::aes(month, sales, group = 1)) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::labs(title = "ggplot2 object", x = NULL, y = "Sales") +
+    ggplot2::theme_minimal()
+}`],
+        ['A17', 'Plot values referenced from another worksheet'],
+        ['B17', `={
+  # The numeric series comes directly from the References worksheet.
+  values <- as.numeric(ref("\'References\'!B5:B8"))
+  values[is.na(values)] <- 0
+  barplot(values, names.arg = c("Jan", "Feb", "Mar", "Apr"), ylab = "Sales", main = "Cross-sheet data")
+  invisible(NULL)
+}`],
+        ['A22', 'Returned lattice object'],
+        ['B22', `={
+  # Trellis objects are printed and captured in the same way as ggplot objects.
+  lattice::xyplot(mpg ~ wt | factor(cyl), data = mtcars, type = c("p", "r"), xlab = "Weight", ylab = "MPG")
+}`],
+        ['A27', 'Plot settings'],
+        ['A28', 'Use Set plot size to change the device resolution, then recalculate the workbook.'],
+      ]),
+    },
+  ];
+
+  return {
+    formatVersion: FORMAT_VERSION,
+    title: 'RGrid Example Workbook',
+    activeSheetId: sheetIds.start,
+    seq,
+    names: {
+      example_numbers: { kind: 'range', sheetId: sheetIds.start, ref: 'B8:B12' },
+      vat_rate: { kind: 'expression', expression: '0.21' },
+      double_it: { kind: 'expression', expression: 'function(x) x * 2' },
+      long_sales: { kind: 'range', sheetId: sheetIds.data, ref: 'A5#' },
+    },
+    view: { showElementNames: true, referenceStyle: 'A1' },
+    sheets,
   };
 }
 
@@ -1209,6 +1477,7 @@ function selectionContains(row, col) {
 }
 
 function buildGrid() {
+  hideCellTooltip();
   const sheet = activeSheet();
   const fragment = document.createDocumentFragment();
   const headerRow = document.createElement('tr');
@@ -1255,6 +1524,60 @@ function buildGrid() {
   refreshSelection(true);
 }
 
+function appendInlineMarkdown(target, text) {
+  const source = String(text ?? '');
+  const pattern = /(\*\*|__)(?=\S)([\s\S]*?\S)\1|(\*|_)(?=\S)([\s\S]*?\S)\3/g;
+  let cursor = 0;
+  let match;
+  while ((match = pattern.exec(source))) {
+    const marker = match[1] || match[3];
+    const before = match.index > 0 ? source[match.index - 1] : '';
+    const afterIndex = match.index + match[0].length;
+    const after = afterIndex < source.length ? source[afterIndex] : '';
+    if (marker.includes('_') && /[A-Za-z0-9]/.test(before) && /[A-Za-z0-9]/.test(after)) continue;
+    if (match.index > cursor) target.append(document.createTextNode(source.slice(cursor, match.index)));
+    const formatted = document.createElement(match[1] ? 'strong' : 'em');
+    formatted.textContent = match[2] || match[4] || '';
+    target.append(formatted);
+    cursor = afterIndex;
+  }
+  if (cursor < source.length) target.append(document.createTextNode(source.slice(cursor)));
+}
+
+function positionCellTooltip(cell) {
+  if (!cell || els.cellTooltip.hidden) return;
+  const gap = 7;
+  const margin = 8;
+  const cellRect = cell.getBoundingClientRect();
+  const tooltipRect = els.cellTooltip.getBoundingClientRect();
+  let left = cellRect.left;
+  let top = cellRect.bottom + gap;
+  if (left + tooltipRect.width > window.innerWidth - margin) left = window.innerWidth - tooltipRect.width - margin;
+  if (top + tooltipRect.height > window.innerHeight - margin) top = cellRect.top - tooltipRect.height - gap;
+  els.cellTooltip.style.left = `${Math.max(margin, left)}px`;
+  els.cellTooltip.style.top = `${Math.max(margin, top)}px`;
+}
+
+function showCellTooltip(cell) {
+  const text = cell?.dataset.tooltipText || '';
+  if (!text) { hideCellTooltip(); return; }
+  if (tooltipCell && tooltipCell !== cell) tooltipCell.removeAttribute('aria-describedby');
+  tooltipCell = cell;
+  els.cellTooltip.replaceChildren();
+  if (cell.dataset.tooltipMarkdown === 'true') appendInlineMarkdown(els.cellTooltip, text);
+  else els.cellTooltip.textContent = text;
+  els.cellTooltip.hidden = false;
+  cell.setAttribute('aria-describedby', 'cellTooltip');
+  positionCellTooltip(cell);
+}
+
+function hideCellTooltip() {
+  if (tooltipCell) tooltipCell.removeAttribute('aria-describedby');
+  tooltipCell = null;
+  els.cellTooltip.hidden = true;
+  els.cellTooltip.replaceChildren();
+}
+
 function refreshGridValues() {
   const sheet = activeSheet();
   for (let row = 1; row <= sheet.rows; row += 1) {
@@ -1266,39 +1589,51 @@ function refreshGridValues() {
       const value = displayValues.has(key) ? displayValues.get(key) : null;
       const ownerKey = spillOwners.get(key);
       const ownCell = sheet.cells[address];
+      const isPureTextCell = Boolean(ownCell && (ownCell.literal || isPlainTextInput(ownCell.input)));
       const ownComputed = computed.get(key);
       const plots = plotsByCell.get(key) || [];
       const displayText = formatDisplay(value);
-      const isGgplot = ownComputed?.plotKind === 'ggplot';
-      const showPlotLabel = plots.length > 0 && (isGgplot || !displayText || displayText === '<object>');
+      const plotKind = ownComputed?.plotKind || '';
+      const isGgplot = plotKind === 'ggplot';
+      const isLattice = plotKind === 'lattice';
+      const isPlotObject = isGgplot || isLattice;
+      const hasPlotIndicator = plots.length > 0 || isPlotObject;
+      const showPlotLabel = isPlotObject || (plots.length > 0 && (!displayText || displayText === '<object>'));
       const renderedText = showPlotLabel
-        ? (plots.length === 1 ? 'Plot' : `${plots.length} plots`)
+        ? (plots.length > 1 ? `${plots.length} plots` : 'Plot')
         : (displayText || (plots.length ? (plots.length === 1 ? 'Plot' : `${plots.length} plots`) : ''));
 
       const valueElement = document.createElement('span');
       valueElement.className = 'cell-value';
-      valueElement.textContent = renderedText;
-      if (isGgplot && showPlotLabel) {
-        const gg = document.createElement('sup');
-        gg.className = 'ggplot-superscript';
-        gg.textContent = 'gg';
-        valueElement.appendChild(gg);
+      if (showPlotLabel) {
+        valueElement.append(document.createTextNode(renderedText));
+        if (isPlotObject) {
+          const kind = document.createElement('sup');
+          kind.className = 'plot-kind-superscript';
+          kind.textContent = isGgplot ? 'ggplot2' : 'lattice';
+          valueElement.appendChild(kind);
+        }
+      } else if (typeof value === 'string' && !isErrorValue(value)) {
+        appendInlineMarkdown(valueElement, renderedText);
+      } else {
+        valueElement.textContent = renderedText;
       }
       td.replaceChildren(valueElement);
 
-      const isList = ownComputed?.objectKind === 'list' && !isGgplot;
-      const isGenericObject = ['function', 'environment', 'other'].includes(ownComputed?.objectKind);
+      const isList = ownComputed?.objectKind === 'list' && !isPlotObject;
+      const isGenericObject = ['function', 'environment', 'other'].includes(ownComputed?.objectKind) && !isPlotObject;
       td.classList.toggle('number', !showPlotLabel && typeof value === 'number' && Number.isFinite(value));
       td.classList.toggle('error', isErrorValue(value));
       td.classList.toggle('spill', Boolean(ownerKey && ownerKey !== key));
       td.classList.toggle('spill-anchor', Boolean(ownComputed && !ownComputed.error && matrixArea(ownComputed.matrix) > 1));
       td.classList.toggle('pending', Boolean(ownCell && !runtime.ready && !displayValues.has(key)));
-      td.classList.toggle('has-plot', plots.length > 0);
+      td.classList.toggle('has-plot', hasPlotIndicator);
       td.classList.toggle('plot-only', showPlotLabel);
       td.classList.toggle('ggplot-cell', isGgplot && showPlotLabel);
+      td.classList.toggle('lattice-cell', isLattice && showPlotLabel);
       td.classList.toggle('has-object', isList);
-      td.classList.toggle('has-generic-object', isGenericObject && plots.length === 0);
-      td.classList.toggle('has-corner-marker', plots.length > 0 || isList || isGenericObject);
+      td.classList.toggle('has-generic-object', isGenericObject && !hasPlotIndicator);
+      td.classList.toggle('has-corner-marker', hasPlotIndicator || isList || isGenericObject);
       const pieces = [];
       if (ownCell) pieces.push(`Input: ${ownCell.input}`);
       if (ownComputed?.error && ownComputed.message) pieces.push(`Error: ${ownComputed.message}`);
@@ -1306,8 +1641,17 @@ function refreshGridValues() {
       if (value !== null && value !== '') pieces.push(`Value: ${formatDisplay(value)}`);
       if (plots.length) pieces.push(`${plots.length} plot${plots.length === 1 ? '' : 's'} generated by this formula`);
       if (isGgplot) pieces.push('ggplot2 plot object');
+      if (isLattice) pieces.push('lattice plot object');
       if (isList) pieces.push('Double-click to inspect this R list');
-      td.title = pieces.join('\n');
+      const tooltipText = isPureTextCell ? ownCell.input : pieces.join('\n');
+      if (tooltipText) {
+        td.dataset.tooltipText = tooltipText;
+        td.dataset.tooltipMarkdown = isPureTextCell ? 'true' : 'false';
+      } else {
+        delete td.dataset.tooltipText;
+        delete td.dataset.tooltipMarkdown;
+      }
+      td.removeAttribute('title');
       td.setAttribute('aria-selected', selectionContains(row, col) ? 'true' : 'false');
     }
   }
@@ -1384,7 +1728,10 @@ function renderPlotPane() {
       label.textContent = `${entry.sheet.name}!${entry.address}`;
       const counter = document.createElement('span');
       counter.className = 'plot-card-index';
-      counter.textContent = entry.plots.length > 1 ? `${index + 1}/${entry.plots.length}` : (computed.get(entry.key)?.plotKind === 'ggplot' ? 'ggplot2 plot' : 'R plot');
+      const kind = computed.get(entry.key)?.plotKind;
+      counter.textContent = entry.plots.length > 1
+        ? `${index + 1}/${entry.plots.length}`
+        : (kind === 'ggplot' ? 'ggplot2 plot' : kind === 'lattice' ? 'lattice plot' : 'R plot');
       header.append(label, counter);
       const image = document.createElement('img');
       image.className = 'plot-image';
@@ -1789,16 +2136,60 @@ function expressionFromInput(input) {
   return text.startsWith('=') ? text.slice(1).trim() : text.trim();
 }
 
+function matchingCallClose(text, openingIndex) {
+  let depth = 0;
+  let quote = '';
+  let escaped = false;
+  for (let index = openingIndex; index < text.length; index += 1) {
+    const character = text[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) quote = '';
+      continue;
+    }
+    if (character === '"' || character === "'" || character === '`') {
+      quote = character;
+      continue;
+    }
+    if (character === '(') depth += 1;
+    else if (character === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
+}
+
+function startsWithRCallExpression(text) {
+  const call = text.match(/^(?:(?:[A-Za-z.][A-Za-z0-9._]*):::{0,1})?[A-Za-z.][A-Za-z0-9._]*\s*\(/);
+  if (!call) return false;
+  const openingIndex = text.indexOf('(', call[0].length - 1);
+  const closingIndex = matchingCallClose(text, openingIndex);
+  if (closingIndex < 0) return true;
+  const suffix = text.slice(closingIndex + 1).trimStart();
+  if (!suffix) return true;
+  if (suffix.startsWith('#')) return true;
+  if (suffix.startsWith(': ')) return false;
+  return /^(?:\[|\$|@|\(|\|>|%[^%]*%|\+|-|\*|\/|\^|:{1,2}(?!\s)|==|!=|<=|>=|<|>|&&?|\|\|?|~|\?)/.test(suffix);
+}
+
 function isPlainTextInput(input) {
-  if (input.startsWith('=')) return false;
-  const text = input.trim();
+  const source = String(input ?? '');
+  if (source.startsWith('=')) return false;
+  const text = source.trim();
   if (text === '') return true;
   if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return false;
-  if (/^(TRUE|FALSE|NA|NaN|Inf|NULL)$/i.test(text)) return false;
-  if (/^['"`]/.test(text)) return false;
-  if (/\bref\s*\(/i.test(text)) return false;
-  if (/[(){}\[\]+*\/^<>=:$,;%|&!~\-]/.test(text)) return false;
-  if (/^(c|matrix|array|data\.frame|seq|rep|mean|sum|min|max|sd|var|paste|sprintf|sample|runif|rnorm)\s*\(/i.test(text)) return false;
+  if (/^(?:TRUE|FALSE|NA(?:_(?:integer|real|complex|character)_)?|NaN|Inf|NULL)$/i.test(text)) return false;
+  if (/^(['"`])(?:\\.|(?!\1)[\s\S])*\1$/.test(text)) return false;
+  if (/^[{[(]/.test(text)) return false;
+  if (/^function\s*\(/i.test(text)) return false;
+  if (/^[A-Za-z.][A-Za-z0-9._]*\s*(?:<-|<<-|->|->>)\s*/.test(text)) return false;
+  if (/^(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*)\s*:\s*(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*)$/.test(text)) return false;
+  if (/^[A-Za-z.][A-Za-z0-9._]*(?:\s*(?:\$|@)\s*[A-Za-z.][A-Za-z0-9._]*|\s*\[[\s\S]*\])+$/.test(text)) return false;
+  if (/^(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*)\s*(?:\+|\*|\/|\^|%%|%\/%|==|!=|<=|>=|<|>|&&?|\|\|?)\s*(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*)/.test(text)) return false;
+  if (/^(?:(?:[+-]?\d+(?:\.\d+)?)\s*-\s*(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*)|[A-Za-z.][A-Za-z0-9._]*\s+-\s+(?:[+-]?\d+(?:\.\d+)?|[A-Za-z.][A-Za-z0-9._]*))/.test(text)) return false;
+  if (startsWithRCallExpression(text)) return false;
   return true;
 }
 
@@ -2058,6 +2449,7 @@ function buildRCode(expression, refs, resultKey) {
       if (nchar(text) > limit) paste0(substr(text, 1L, limit - 1L), "…") else text
     }
     .rgrid_summary <- function(x) {
+      if (inherits(x, c("gg", "ggplot", "trellis"))) return("Plot")
       if (is.function(x)) return(paste0("<function(", paste(names(formals(x)), collapse = ", "), ")>"))
       if (is.environment(x)) return("<environment>")
       if (is.list(x) && !is.data.frame(x)) return(sprintf("<list [%d]>", length(x)))
@@ -2132,7 +2524,7 @@ function buildRCode(expression, refs, resultKey) {
       out
     }
     .rgrid_pack <- function(x) {
-      object_kind <- if (is.null(x)) "null" else if (is.function(x)) "function" else if (is.data.frame(x)) "data.frame" else if (is.list(x)) "list" else if (is.environment(x)) "environment" else if (is.matrix(x)) "matrix" else if (is.array(x)) "array" else if (length(x) == 1L && is.null(dim(x))) "scalar" else if (is.atomic(x)) "vector" else "other"
+      object_kind <- if (is.null(x)) "null" else if (inherits(x, c("gg", "ggplot", "trellis"))) "plot" else if (is.function(x)) "function" else if (is.data.frame(x)) "data.frame" else if (is.list(x)) "list" else if (is.environment(x)) "environment" else if (is.matrix(x)) "matrix" else if (is.array(x)) "array" else if (length(x) == 1L && is.null(dim(x))) "scalar" else if (is.atomic(x)) "vector" else "other"
       plot_kind <- if (inherits(x, c("gg", "ggplot"))) "ggplot" else if (inherits(x, "trellis")) "lattice" else ""
       object_class <- paste(class(x), collapse = " ")
       preserve_object <- is.function(x) || is.environment(x) || (is.list(x) && !is.data.frame(x)) || (length(x) <= 1L && is.null(dim(x)))
@@ -2967,6 +3359,7 @@ rgrid_parse_reference <- function(text, current_sheet, depth = 0L) {
 }
 
 rgrid_summary <- function(x) {
+  if (inherits(x, c("gg", "ggplot", "trellis"))) return("Plot")
   if (is.function(x)) return(paste0("<function(", paste(names(formals(x)), collapse = ", "), ")>"))
   if (is.environment(x)) return("<environment>")
   if (is.list(x) && !is.data.frame(x)) return(sprintf("<list [%d]>", length(x)))
@@ -3234,7 +3627,10 @@ rgrid_install_required_packages <- function(packages) {
   missing <- packages[!vapply(packages, requireNamespace, logical(1L), quietly = TRUE)]
   if (!length(missing)) return(invisible(character()))
   message("Installing required packages: ", paste(missing, collapse = ", "))
-  if (requireNamespace("webr", quietly = TRUE)) {
+  if (identical(R.version$arch, "wasm32")) {
+    if (!requireNamespace("webr", quietly = TRUE)) {
+      stop("The webr package is required to install packages on wasm32.", call. = FALSE)
+    }
     webr::install(missing)
   } else {
     repositories <- getOption("repos")
@@ -3266,7 +3662,8 @@ function exportAnnotatedR() {
   const evaluationOrder = executableEvaluationOrder();
   const lines = [
     '# RGrid annotated and executable workbook',
-    '# Source this file in desktop R or paste it into the webR console.',
+    '# Source this file in a standard R interpreter or paste it into the webR console.',
+    '# The webr package is consulted only when R.version$arch is wasm32; other architectures use install.packages().',
     '# The rgrid object contains exact values, formatted displays, errors, formulas, names, and workbook metadata.',
     `# rgrid-format: ${FORMAT_VERSION}`,
     ...payloadLines.map((line) => `# rgrid-payload-b64: ${line}`),
@@ -3693,6 +4090,17 @@ function finishCellDrag() {
 }
 
 function bindEvents() {
+  els.grid.addEventListener('mouseover', (event) => {
+    const cell = event.target.closest('.cell');
+    if (!cell || cell.contains(event.relatedTarget)) return;
+    showCellTooltip(cell);
+  });
+  els.grid.addEventListener('mouseout', (event) => {
+    const cell = event.target.closest('.cell');
+    if (!cell || cell.contains(event.relatedTarget)) return;
+    hideCellTooltip();
+  });
+  els.gridViewport.addEventListener('scroll', hideCellTooltip, { passive: true });
   els.grid.addEventListener('mousedown', (event) => {
     const cell = event.target.closest('.cell');
     if (cell) {
@@ -3805,14 +4213,28 @@ function bindEvents() {
     const tab = event.target.closest('.sheet-tab');
     if (tab) activateSheet(tab.dataset.sheetId);
   });
-  $('#newWorkbookBtn').addEventListener('click', () => {
-    if (!confirm('Create a new workbook? The current workbook remains available only if you exported it.')) return;
-    recordHistory('create new workbook');
+  const replaceWorkbook = (nextWorkbook, historyLabel) => {
+    recordHistory(historyLabel);
     endFormulaEdit();
-    workbook = createExampleWorkbook();
-    computed = new Map(); spillOwners = new Map(); displayValues = new Map(); plotsByCell = new Map();
+    workbook = nextWorkbook;
+    computed = new Map();
+    spillOwners = new Map();
+    displayValues = new Map();
+    plotsByCell = new Map();
     selection = { r1: 1, c1: 1, r2: 1, c2: 1 };
-    renderSheetTabs(); updateViewToggleButtons(); buildGrid(); scheduleSave(); scheduleRecalculation(0);
+    renderSheetTabs();
+    updateViewToggleButtons();
+    buildGrid();
+    scheduleSave();
+    scheduleRecalculation(0);
+  };
+  $('#newWorkbookBtn').addEventListener('click', () => {
+    if (!confirm('Create a blank workbook? The current workbook remains available only if you exported it.')) return;
+    replaceWorkbook(createBlankWorkbook(), 'create new workbook');
+  });
+  els.exampleWorkbookBtn.addEventListener('click', () => {
+    if (!confirm('Replace the current workbook with the five-sheet example workbook?')) return;
+    replaceWorkbook(createExampleWorkbook(), 'load example workbook');
   });
   els.undoBtn.addEventListener('click', undoWorkbook);
   els.redoBtn.addEventListener('click', redoWorkbook);
@@ -3867,6 +4289,7 @@ function bindEvents() {
     else setPlotPaneWidth(plotPaneWidth + (event.key === 'ArrowLeft' ? 24 : -24));
   });
   window.addEventListener('resize', () => {
+    hideCellTooltip();
     setPlotPaneWidth(plotPaneWidth, { persist: false });
     setFormulaEditorHeight(formulaEditorHeight, { persist: false });
   });

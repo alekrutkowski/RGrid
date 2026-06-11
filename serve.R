@@ -7,8 +7,8 @@ args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)][1])
 root <- dirname(normalizePath(file_arg, mustWork = TRUE))
 setwd(root)
-
 cat("RGrid: http://127.0.0.1:8080\n")
+
 runServer(
   host = "127.0.0.1",
   port = 8080,

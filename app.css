@@ -314,6 +314,24 @@ code, pre, .formula-input, .formula-highlight, .cell { font-family: "Cascadia Co
 .cell:hover { background: #f5faf7; }
 .cell.selected:hover { background: var(--selection); }
 
+.cell-tooltip {
+  position: fixed;
+  z-index: 80;
+  max-width: min(520px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(20,45,32,.18);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.cell-tooltip[hidden] { display: none; }
+
 .bottom-bar {
   min-width: 0;
   display: grid;
@@ -688,6 +706,8 @@ html[data-theme="dark"] .formula-highlight code { color: var(--ink) !important; 
   display: inline;
   min-width: 0;
 }
+.cell .cell-value strong { font-weight: 750; }
+.cell .cell-value em { font-style: italic; }
 .cell.has-corner-marker { padding-left: 14px; }
 .cell.has-plot::before,
 .cell.has-object::before,
@@ -707,7 +727,7 @@ html[data-theme="dark"] .formula-highlight code { color: var(--ink) !important; 
 .cell.has-plot::before { background: #7957ad; }
 .cell.plot-only { padding-left: 14px; }
 .cell.plot-only .cell-value { color: #60458f; font-weight: 650; }
-.ggplot-superscript {
+.plot-kind-superscript {
   position: relative;
   top: -.28em;
   margin-left: 1px;
@@ -728,7 +748,7 @@ html[data-theme="dark"] .formula-highlight code { color: var(--ink) !important; 
   border-left: 7px solid transparent;
 }
 html[data-theme="dark"] .cell.plot-only .cell-value,
-html[data-theme="dark"] .ggplot-superscript { color: #c4a7ed; }
+html[data-theme="dark"] .plot-kind-superscript { color: #c4a7ed; }
 
 .plot-list {
   display: flex;
@@ -910,4 +930,20 @@ html[data-theme="dark"] .fx-badge:focus-visible { color: #c8f5d9; background: #2
   .ref-help-examples { grid-template-columns: 1fr; }
   .ref-help-examples article:last-child { grid-column: auto; }
   .ref-help-icon { width: 42px; height: 42px; border-radius: 11px; }
+}
+
+/* v9 blank-start and example-workbook title action */
+.title-link { white-space: nowrap; }
+@media (max-width: 920px) {
+  .title-actions { gap: 6px; }
+  #exampleWorkbookBtn {
+    max-width: 144px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.12;
+  }
+}
+@media (max-width: 620px) {
+  #themeBtn { display: none; }
+  #exampleWorkbookBtn { max-width: 122px; font-size: 11px; }
 }

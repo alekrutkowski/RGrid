@@ -5,101 +5,165 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <title>RGrid help and keyboard cheatsheet</title>
+  <title>RGrid help &amp; cheatsheet</title>
   <style>
-    :root { color-scheme:light dark; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; --green:#116b43; --line:#d7ded9; --surface:#fff; --soft:#f5f8f6; --ink:#17231c; --muted:#607068; }
-    * { box-sizing:border-box; }
-    body { margin:0; color:var(--ink); background:#edf2ef; }
-    main { width:min(1180px,96vw); margin:24px auto; padding:30px clamp(20px,4vw,54px); border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:0 14px 38px rgba(22,60,39,.10); }
-    h1 { margin:0 0 8px; color:var(--green); font-size:clamp(25px,3vw,38px); }
-    h2 { margin-top:30px; color:var(--green); font-size:20px; }
-    h3 { margin:18px 0 7px; font-size:15px; }
-    p, li { line-height:1.58; }
-    .lead { max-width:850px; color:var(--muted); }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr)); gap:18px; }
-    .card { min-width:0; padding:17px 18px; border:1px solid var(--line); border-radius:11px; background:var(--soft); }
-    pre { max-width:100%; margin:8px 0 0; padding:13px 15px; overflow-x:auto; border:1px solid var(--line); border-radius:8px; background:var(--surface); white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.52 "Cascadia Code",Consolas,monospace; }
-    code { font-family:"Cascadia Code",Consolas,monospace; }
-    .keys { display:grid; grid-template-columns:minmax(110px,max-content) minmax(0,1fr); gap:9px 18px; align-items:center; }
-    kbd { justify-self:start; max-width:100%; padding:3px 8px; border:1px solid #aeb9b2; border-bottom-width:2px; border-radius:5px; background:var(--surface); font:12px "Cascadia Code",Consolas,monospace; white-space:normal; }
-    a { color:var(--green); }
-    .note { padding:12px 14px; border-left:4px solid var(--green); background:var(--soft); }
-    @media (prefers-color-scheme:dark) { :root { --green:#79d6a4; --line:#46534c; --surface:#18201c; --soft:#202a25; --ink:#eef7f1; --muted:#b3c0b8; } body{background:#111613;} }
-    @media (max-width:620px) { main{width:100%;min-height:100vh;margin:0;border:0;border-radius:0;padding:22px 16px;} .keys{grid-template-columns:1fr;} }
+    :root { color-scheme: light dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; --green:#1f6f4b; --line:#d6ddd9; --paper:#fff; --soft:#f4faf6; --ink:#17221c; --muted:#65736b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: #edf2ef; }
+    header { padding: 28px max(22px, calc((100vw - 1040px)/2)); color: white; background: linear-gradient(115deg, #123d2a, var(--green)); }
+    header h1 { margin: 0 0 6px; font-size: clamp(27px, 4vw, 40px); }
+    header p { margin: 0; opacity: .84; }
+    header a { color: white; }
+    main { width: min(1040px, calc(100% - 32px)); margin: 24px auto 48px; display: grid; gap: 18px; }
+    section { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 5px 18px rgba(20,45,32,.06); }
+    h2 { margin: 0 0 12px; color: #18543a; }
+    h3 { margin: 18px 0 8px; }
+    p, li { line-height: 1.55; }
+    code, pre { font-family: "Cascadia Code", Consolas, monospace; }
+    code { padding: 1px 5px; border-radius: 4px; background: var(--soft); }
+    pre { overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); line-height: 1.45; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #18543a; }
+    .callout { padding: 14px 16px; border-left: 4px solid var(--green); border-radius: 7px; background: var(--soft); }
+    .callout + .grid { margin-top: 10px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    .grid article { padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+    .grid h3 { margin-top: 0; }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper:#17211c; --soft:#202d26; --ink:#e4eee8; --muted:#adbbb2; --line:#3b4b42; }
+      body { background:#111814; }
+      h2, th { color:#8ed3ab; }
+      header { background:linear-gradient(115deg,#102a1e,#18543a); }
+    }
   </style>
 </head>
 <body>
-<main>
-  <h1>RGrid help and keyboard cheatsheet</h1>
-  <p class="lead">RGrid is a local, reactive browser spreadsheet powered by webR. Formulas use R, while worksheet references are supplied through <code>ref()</code>.</p>
-
-  <div class="grid">
-    <section class="card">
-      <h2>Formula essentials</h2>
-      <pre>=mean(ref("A1:A10"), na.rm = TRUE)
-=ref("D3#")
-=ref("R1C1:R8C7")
-={library(magrittr); rnorm(100) %>% matrix(ncol = 2)}
-=function(x) x + 3
-=\(x) x + 3</pre>
-      <p>Names created in <strong>Name manager</strong> can refer to ranges or hold R values such as functions and lists.</p>
+  <header>
+    <h1>RGrid help &amp; cheatsheet</h1>
+    <p>Browser spreadsheet formulas evaluated by R through webR. <a href="index.html">Return to RGrid</a>.</p>
+  </header>
+  <main>
+    <section>
+      <h2>Starting a workbook</h2>
+      <p>A fresh RGrid session starts with one empty worksheet. Autosaved workbooks are restored from browser local storage.</p>
+      <div class="callout"><strong>Load an example workbook</strong> replaces the current workbook with a five-sheet guided tour. Export work you need before replacing it.</div>
+      <div class="grid">
+        <article><h3>Start Here</h3><p>Values, formulas, spills, workbook names, named expressions, and named functions.</p></article>
+        <article><h3>References</h3><p>A1 and R1C1 addresses, ranges, cross-sheet references, spill references, blank cells, literals, and preserved objects.</p></article>
+        <article><h3>Data &amp; Pivot</h3><p>A long <code>data.table</code>, two <code>dcast()</code> pivot patterns, and a narrowly filtered <code>eurodata::importData()</code> request.</p></article>
+        <article><h3>Objects &amp; Import</h3><p>Nested lists, vectors, matrices, function objects, <code>rio::import()</code>, literal file imports, zero-length values, and missing values.</p></article>
+        <article><h3>Plots</h3><p>Base graphics, multiple plots from one cell, ggplot2, lattice, and cross-sheet plot data.</p></article>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>Function help</h2>
-      <p>Place the formula cursor on a function name and press <kbd>F1</kbd>. On <code>ref()</code>, RGrid opens a styled information box inside the app and explains its case-insensitive Excel-style references, including <code>A1</code>, <code>R1C1</code>, <code>A1:G5</code>, <code>B8#</code>, and names defined in Name manager, including named expressions. Core R functions open their R manual page, while functions from other packages open the corresponding CRAN reference-manual anchor.</p>
-      <p>Examples include <code>lm</code>, <code>capture.output</code>, <code>eurodata::importData</code>, or an unqualified function from a package loaded in the formula.</p>
-      <p>Click the <strong>fx</strong> icon beside the formula editor to open the <a href="https://rdrr.io/r/" target="_blank" rel="noreferrer">R function index</a>.</p>
+    <section>
+      <h2>Values and formulas</h2>
+      <p>Plain text and numbers are stored directly. Punctuation alone does not turn a label into R code. Begin spreadsheet-style R formulas with <code>=</code>, especially when an expression could be ambiguous. A braced formula may contain several R statements; the final value is displayed.</p>
+      <p>Text cells support minimal inline Markdown: <code>**bold**</code> or <code>__bold__</code>, and <code>*italic*</code> or <code>_italic_</code>. The original cell input is preserved.</p>
+      <pre><code>=1 + 2
+=mean(ref("A1:A10"), na.rm = TRUE)
+={
+  x &lt;- ref("B2#")
+  sum(x)
+}</code></pre>
+      <p>Vectors spill down. Matrices, arrays, and data frames spill across rows and columns. A blocked spill reports <code>#SPILL!</code>.</p>
     </section>
 
-    <section class="card">
-      <h2>Import data</h2>
-      <p><strong>Import data</strong> accepts Excel, CSV, and TSV files:</p>
-      <ul>
-        <li>Every Excel worksheet becomes a new RGrid worksheet.</li>
-        <li>A CSV or TSV file becomes one new worksheet.</li>
-        <li>Only values are imported. Excel formulas are not imported as R formulas.</li>
-        <li>Imported text remains text even when it resembles an R expression.</li>
-      </ul>
+    <section>
+      <h2><code>ref()</code></h2>
+      <table>
+        <thead><tr><th>Pattern</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>ref("A1")</code></td><td>One cell using A1 notation.</td></tr>
+          <tr><td><code>ref("R4C2")</code></td><td>One cell using R1C1 notation.</td></tr>
+          <tr><td><code>ref("A1:G5")</code></td><td>A rectangular range.</td></tr>
+          <tr><td><code>ref("B8#")</code></td><td>The complete dynamic spill rooted at B8.</td></tr>
+          <tr><td><code>ref("'Data &amp; Pivot'!A5#")</code></td><td>A cross-sheet spill. Quote sheet names containing spaces.</td></tr>
+          <tr><td><code>ref("my_name")</code></td><td>A Name manager range, expression, constant, list, or function.</td></tr>
+        </tbody>
+      </table>
+      <p>References are case-insensitive. Exact spill references recover supported original R objects, not merely formatted cell text. This allows operations such as <code>ref("A5#")$column</code> or calling a stored function with <code>ref("B12")(10)</code>.</p>
     </section>
 
-    <section class="card">
-      <h2>Object display</h2>
-      <p><strong>Show element names</strong> controls vector names, row names, column names, and dimension names.</p>
-      <p>Double-click a list cell to inspect a collapsible tree. Use <strong>Expand all</strong> to reveal every nested branch at once. Double-click a plot cell to reveal its plot.</p>
+    <section>
+      <h2>Objects and element names</h2>
+      <p>RGrid preserves functions, environments, lists, matrices, arrays, data frames, names, dimensions, and classes where possible. Double-click a list cell to inspect an expandable tree.</p>
+      <p><strong>Show element names</strong> controls visible vector names, row names, column names, and dimension names. This setting is stored with the workbook.</p>
     </section>
-  </div>
 
-  <h2>Keyboard</h2>
-  <div class="keys">
-    <kbd>Enter</kbd><span>Commit the formula and move down.</span>
-    <kbd>Alt+Enter</kbd><span>Insert a line break in the formula editor.</span>
-    <kbd>F1</kbd><span>Open documentation for the function under the formula cursor.</span>
-    <kbd>F2</kbd><span>Edit the active cell formula.</span>
-    <kbd>Esc</kbd><span>Cancel formula editing or close the list tree.</span>
-    <kbd>Ctrl+C / Ctrl+V / Ctrl+X</kbd><span>Copy, paste, or cut formulas and values.</span>
-    <kbd>Ctrl+Z / Ctrl+Y</kbd><span>Undo or redo.</span>
-    <kbd>Shift+Arrow</kbd><span>Extend the selection by one cell.</span>
-    <kbd>Ctrl+Arrow</kbd><span>Jump to the next data-region edge.</span>
-    <kbd>Ctrl+Shift+Arrow</kbd><span>Extend the selection to a data-region edge.</span>
-    <kbd>Delete / Backspace</kbd><span>Clear selected cells.</span>
-    <kbd>Selected code + ' " ( [ {</kbd><span>Wrap selected formula code in the matching pair.</span>
-  </div>
+    <section>
+      <h2>Packages: <code>library()</code> and <code>::</code></h2>
+      <p>RGrid recognizes package use in formulas written with <code>library(package)</code>, <code>library("package")</code>, <code>require(package)</code>, and qualified calls such as <code>package::function()</code>. In the browser, a referenced package is installed automatically when necessary before the formula is evaluated.</p>
+      <p>All worksheets and cells use the same R session. After a cell containing, for example, <code>=library(data.table)</code> has evaluated successfully, <code>data.table</code> is attached to the shared search path. Its exported functions can then be called without a prefix from cells in any sheet. This is ordinary R session-wide <code>library()</code> behaviour, not a sheet-local setting.</p>
+      <div class="callout"><strong>Calculation order still matters.</strong> On a fresh or complete recalculation, an independent formula may run before the <code>library()</code> cell. Merely placing the loading cell above another cell or on an earlier sheet does not create a dependency. Add an explicit <code>ref()</code> dependency, or use qualified calls.</div>
+      <p><code>package::function()</code> calls an exported function from the package namespace without attaching the package. It therefore avoids search-path conflicts and does not depend on another cell having run first. For reproducible workbook formulas, qualified calls such as <code>data.table::dcast()</code> are usually the safer choice.</p>
+      <pre><code># Setup!A1
+=library(data.table)
 
-  <h2>References and selection</h2>
-  <p>Drag across cells, or use Shift with arrow keys, while editing a formula to insert a range reference. Selecting the complete footprint of a dynamic array inserts a spill reference such as <code>ref("D3#")</code>.</p>
-  <p><strong>Toggle A1/R1C1</strong> switches column headings, the name box, and newly inserted formula references between forms such as <code>A1:G8</code> and <code>R1C1:R8C7</code>. Existing formulas continue to work in either notation.</p>
+# Another cell with an explicit dependency
+={
+  ref("'Setup'!A1")
+  dcast(long_data, product ~ quarter, value.var = "sales", fun.aggregate = sum)
+}
 
-  <h2>Plots</h2>
-  <p>Base R, ggplot2, and lattice plots generated by formulas appear in the resizable <strong>Plots</strong> pane. Use <strong>Set plot size</strong> to select the final bitmap dimensions.</p>
+# No attachment or dependency on a setup cell
+=data.table::dcast(long_data, product ~ quarter, value.var = "sales", fun.aggregate = sum)</code></pre>
+      <p>Exported RGrid scripts collect package dependencies from both styles and install missing packages before evaluating workbook cells. Once installed, the formulas follow the same <code>library()</code> and <code>::</code> semantics as a standard R session.</p>
+    </section>
 
-  <h2>Storage and export</h2>
-  <p>RGrid autosaves the exact workbook in browser local storage. It can export an executable and restorable RGrid R script, calculated CSV files in a ZIP archive, or a calculated-value-only Excel workbook.</p>
+    <section>
+      <h2>Import and export</h2>
+      <h3>Tabular files</h3>
+      <p><strong>Import data</strong> accepts CSV, TSV, TXT, XLS, and XLSX files. Imported tables become new worksheets. Formula-looking text, including text beginning with <code>=</code>, remains literal text.</p>
+      <h3>RGrid R scripts</h3>
+      <p><strong>Export to RGrid R script</strong> creates the lossless RGrid workbook format and an executable R script. The script installs missing packages with <code>webr::install()</code> only when <code>R.version$arch</code> is <code>wasm32</code>. On standard R architectures it uses <code>install.packages()</code>, so the exported file can be sourced outside webR.</p>
+      <pre><code>source("RGrid-Workbook.R")
+str(rgrid$values)
+str(rgrid$objects)</code></pre>
+      <p>Use <strong>Import from RGrid R script</strong> to restore the exact workbook. CSV and Excel exports contain calculated values only.</p>
+    </section>
 
-  <p class="note">On GitHub Pages, webR uses its PostMessage communication channel because Pages cannot add the cross-origin-isolation headers used by the faster SharedArrayBuffer channel. Calculations still run locally in the browser.</p>
+    <section>
+      <h2>Plots</h2>
+      <p>Base graphics are captured from formulas. Returned ggplot2 and lattice objects are printed automatically and retained as objects. Their cells display <code>Plot</code> with <code>ggplot2</code> or <code>lattice</code> in superscript and a small plot marker in the top-left corner.</p>
+      <pre><code>={ plot(1:10, (1:10)^2, type = "b"); invisible(NULL) }
+=ggplot2::ggplot(mtcars, ggplot2::aes(wt, mpg)) + ggplot2::geom_point()
+=lattice::xyplot(mpg ~ wt | factor(cyl), data = mtcars)</code></pre>
+      <p>Use <strong>Set plot size</strong> to control bitmap dimensions, and use the divider to resize the plot pane.</p>
+    </section>
 
-  <h2>Further documentation</h2>
-  <p><a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noreferrer">webR documentation</a> · <a href="README.md">RGrid README</a> · <a href="https://rdrr.io/r/" target="_blank" rel="noreferrer">R function index</a></p>
-</main>
+    <section>
+      <h2>Keyboard and mouse</h2>
+      <table>
+        <tbody>
+          <tr><th>Drag</th><td>Select a rectangular range.</td></tr>
+          <tr><th>Shift + Arrow</th><td>Extend the selection.</td></tr>
+          <tr><th>Ctrl + Arrow</th><td>Jump to a data-region boundary.</td></tr>
+          <tr><th>Enter</th><td>Commit and move down.</td></tr>
+          <tr><th>Alt + Enter</th><td>Insert a line break in a formula.</td></tr>
+          <tr><th>F1</th><td>Open help for the function under the formula cursor.</td></tr>
+          <tr><th>F2</th><td>Edit the active cell.</td></tr>
+          <tr><th>Ctrl + C / X / V</th><td>Copy, cut, and paste.</td></tr>
+          <tr><th>Ctrl + Z / Y</th><td>Undo and redo.</td></tr>
+          <tr><th>Esc</th><td>Cancel editing or close an object viewer.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Errors</h2>
+      <table>
+        <tbody>
+          <tr><th><code>#REF!</code></th><td>Invalid reference, missing name, or referenced cell error.</td></tr>
+          <tr><th><code>#SPILL!</code></th><td>Blocked or oversized dynamic array.</td></tr>
+          <tr><th><code>#CYCLE!</code></th><td>Circular dependency.</td></tr>
+          <tr><th><code>#PKG!</code></th><td>Package installation or availability failure.</td></tr>
+          <tr><th><code>#PARSE!</code></th><td>R syntax error.</td></tr>
+          <tr><th><code>#R!</code></th><td>Another R evaluation error.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
 </body>
 </html>

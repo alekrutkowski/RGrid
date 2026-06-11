@@ -14,252 +14,243 @@
   <div id="app" class="app-shell" aria-busy="true">
     <header class="titlebar">
       <div class="brand">
-        <div class="brand-mark">R</div>
+        <div class="brand-mark" aria-hidden="true">R</div>
         <div>
           <div class="brand-name">RGrid</div>
-          <div class="brand-subtitle">Reactive spreadsheet with an R formula engine</div>
+          <div class="brand-subtitle">A browser spreadsheet powered by webR</div>
         </div>
       </div>
       <div class="title-actions">
+        <button id="exampleWorkbookBtn" class="title-link" type="button" title="Replace the current workbook with the five-sheet example workbook">Load an example workbook</button>
         <a id="helpBtn" class="title-link" href="help.html" target="_blank" rel="help">Help &amp; cheatsheet</a>
-        <button id="themeBtn" class="title-link" type="button" aria-pressed="false" title="Toggle light or dark mode">Dark mode</button>
-        <div class="runtime-status" id="runtimeStatus">
-          <span class="status-dot loading"></span>
-          <span id="runtimeStatusText">Loading webR 0.6.0…</span>
+        <button id="themeBtn" class="title-link" type="button" title="Switch colour theme">Dark mode</button>
+        <div class="runtime-status" id="runtimeStatus" role="status" aria-live="polite">
+          <span class="status-dot loading" aria-hidden="true"></span>
+          <span id="runtimeStatusText">Loading webR…</span>
         </div>
       </div>
     </header>
 
     <nav class="ribbon" aria-label="Workbook commands">
       <div class="ribbon-group">
-        <button id="newWorkbookBtn" class="ribbon-command" title="Create a new workbook"><span class="ribbon-icon" aria-hidden="true">▦</span><span class="ribbon-button-label">New<br>workbook</span></button>
-        <button id="importDataBtn" class="ribbon-command" title="Import an Excel, CSV, or TSV file into new worksheets"><span class="ribbon-icon" aria-hidden="true">⇩</span><span class="ribbon-button-label">Import<br>data</span></button>
-        <input id="importDataInput" type="file" accept=".xlsx,.xls,.xlsb,.xlsm,.csv,.tsv,.txt,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" multiple hidden>
-        <button id="importScriptBtn" class="ribbon-command" title="Restore a workbook from an annotated RGrid R script"><span class="ribbon-icon ribbon-icon-r" aria-hidden="true">R↓</span><span class="ribbon-button-label">Import from<br>RGrid R script</span></button>
-        <input id="importScriptInput" type="file" accept=".R,.r,.txt,text/plain" hidden>
+        <button id="newWorkbookBtn" class="ribbon-command" type="button" title="Create a blank workbook">
+          <span class="ribbon-icon" aria-hidden="true">＋</span><span class="ribbon-button-label">New<br>workbook</span>
+        </button>
+        <button id="importDataBtn" class="ribbon-command" type="button" title="Import CSV, TSV, TXT, XLS, or XLSX data">
+          <span class="ribbon-icon" aria-hidden="true">⇩</span><span class="ribbon-button-label">Import<br>data</span>
+        </button>
+        <input id="importDataInput" type="file" accept=".csv,.tsv,.txt,.xls,.xlsx,text/csv,text/tab-separated-values" multiple hidden>
+        <button id="importScriptBtn" class="ribbon-command" type="button" title="Import from RGrid R script">
+          <span class="ribbon-icon ribbon-icon-r" aria-hidden="true">R↓</span><span class="ribbon-button-label">Import from<br>RGrid R script</span>
+        </button>
+        <input id="importScriptInput" type="file" accept=".R,.r,text/plain" hidden>
       </div>
+
       <div class="ribbon-group">
-        <button id="undoBtn" class="ribbon-command" title="Undo (Ctrl+Z)" disabled><span class="ribbon-icon" aria-hidden="true">↶</span><span class="ribbon-button-label">Undo</span></button>
-        <button id="redoBtn" class="ribbon-command" title="Redo (Ctrl+Y or Ctrl+Shift+Z)" disabled><span class="ribbon-icon" aria-hidden="true">↷</span><span class="ribbon-button-label">Redo</span></button>
+        <button id="undoBtn" class="ribbon-command" type="button" title="Undo (Ctrl+Z)">
+          <span class="ribbon-icon" aria-hidden="true">↶</span><span class="ribbon-button-label">Undo</span>
+        </button>
+        <button id="redoBtn" class="ribbon-command" type="button" title="Redo (Ctrl+Y)">
+          <span class="ribbon-icon" aria-hidden="true">↷</span><span class="ribbon-button-label">Redo</span>
+        </button>
       </div>
+
       <div class="ribbon-group">
-        <button id="namesBtn" class="ribbon-command" title="Manage workbook names"><span class="ribbon-icon" aria-hidden="true">≔</span><span class="ribbon-button-label">Name<br>manager</span></button>
-        <button id="toggleElementNamesBtn" class="ribbon-command" title="Show or hide vector, row, and column names" aria-pressed="false"><span class="ribbon-icon ribbon-icon-text" aria-hidden="true">abc</span><span class="ribbon-button-label">Show element<br>names</span></button>
-        <button id="plotsBtn" class="ribbon-command" title="Show plots generated by formulas" disabled><span class="ribbon-icon" aria-hidden="true">▧</span><span class="ribbon-button-label">Show<br>plots</span></button>
-        <button id="plotSettingsBtn" class="ribbon-command" title="Set the captured plot resolution"><span class="ribbon-icon" aria-hidden="true">↔</span><span class="ribbon-button-label">Set plot<br>size</span></button>
-        <button id="referenceStyleBtn" class="ribbon-command" title="Toggle A1 and R1C1 worksheet references" aria-pressed="false"><span class="ribbon-icon ribbon-icon-text" aria-hidden="true">A1</span><span class="ribbon-button-label">Toggle<br>A1/R1C1</span></button>
+        <button id="namesBtn" class="ribbon-command" type="button" title="Open the Name manager">
+          <span class="ribbon-icon" aria-hidden="true">N</span><span class="ribbon-button-label">Name<br>manager</span>
+        </button>
+        <button id="toggleElementNamesBtn" class="ribbon-command" type="button" aria-pressed="true" title="Show or hide vector, row, and column names">
+          <span class="ribbon-icon" aria-hidden="true">#</span><span class="ribbon-button-label">Show element<br>names</span>
+        </button>
+        <button id="plotsBtn" class="ribbon-command" type="button" title="Show plots">
+          <span class="ribbon-icon" aria-hidden="true">▥</span><span class="ribbon-button-label">Show<br>plots</span>
+        </button>
+        <button id="plotSettingsBtn" class="ribbon-command" type="button" title="Set plot size">
+          <span class="ribbon-icon" aria-hidden="true">↔</span><span class="ribbon-button-label">Set plot<br>size</span>
+        </button>
+        <button id="referenceStyleBtn" class="ribbon-command" type="button" title="Toggle A1/R1C1">
+          <span class="ribbon-icon ribbon-icon-text" aria-hidden="true">A1</span><span class="ribbon-button-label">Toggle<br>A1/R1C1</span>
+        </button>
       </div>
+
       <div class="ribbon-group">
-        <button id="addSheetBtn" class="ribbon-command" title="Add a worksheet"><span class="ribbon-icon" aria-hidden="true">＋</span><span class="ribbon-button-label">Add<br>sheet</span></button>
-        <button id="renameSheetBtn" class="ribbon-command" title="Rename the active worksheet"><span class="ribbon-icon" aria-hidden="true">✎</span><span class="ribbon-button-label">Rename current<br>sheet</span></button>
-        <button id="deleteSheetBtn" class="ribbon-command" title="Delete the active worksheet"><span class="ribbon-icon" aria-hidden="true">⌫</span><span class="ribbon-button-label">Delete current<br>sheet</span></button>
+        <button id="addSheetBtn" class="ribbon-command" type="button" title="Add worksheet">
+          <span class="ribbon-icon" aria-hidden="true">▤＋</span><span class="ribbon-button-label">Add<br>sheet</span>
+        </button>
+        <button id="renameSheetBtn" class="ribbon-command" type="button" title="Rename current sheet">
+          <span class="ribbon-icon" aria-hidden="true">✎</span><span class="ribbon-button-label">Rename current<br>sheet</span>
+        </button>
+        <button id="deleteSheetBtn" class="ribbon-command" type="button" title="Delete current sheet">
+          <span class="ribbon-icon" aria-hidden="true">⌫</span><span class="ribbon-button-label">Delete current<br>sheet</span>
+        </button>
       </div>
+
       <div class="ribbon-group">
-        <button id="addRowBtn" class="ribbon-command" title="Add 25 rows"><span class="ribbon-icon" aria-hidden="true">↧</span><span class="ribbon-button-label">Add 25<br>rows</span></button>
-        <button id="addColBtn" class="ribbon-command" title="Add 5 columns"><span class="ribbon-icon" aria-hidden="true">↦</span><span class="ribbon-button-label">Add 5<br>columns</span></button>
+        <button id="addRowBtn" class="ribbon-command" type="button" title="Add 25 rows">
+          <span class="ribbon-icon" aria-hidden="true">＋↕</span><span class="ribbon-button-label">Add 25<br>rows</span>
+        </button>
+        <button id="addColBtn" class="ribbon-command" type="button" title="Add 5 columns">
+          <span class="ribbon-icon" aria-hidden="true">＋↔</span><span class="ribbon-button-label">Add 5<br>columns</span>
+        </button>
       </div>
+
       <div class="ribbon-group export-group">
-        <button id="exportRBtn" class="ribbon-command" title="Export an annotated R script that restores and recalculates the workbook"><span class="ribbon-icon ribbon-icon-r" aria-hidden="true">R↥</span><span class="ribbon-button-label">Export to<br>RGrid R script</span></button>
-        <button id="exportCsvBtn" class="ribbon-command" title="Export every sheet as calculated CSV files in a ZIP archive"><span class="ribbon-icon" aria-hidden="true">ZIP</span><span class="ribbon-button-label">Export to CSV<br>(zipped, only values)</span></button>
-        <button id="exportXlsxBtn" class="ribbon-command" title="Export calculated values to an Excel workbook"><span class="ribbon-icon ribbon-icon-text" aria-hidden="true">X</span><span class="ribbon-button-label">Export to Excel<br>(only values)</span></button>
+        <button id="exportRBtn" class="ribbon-command" type="button" title="Export to RGrid R script">
+          <span class="ribbon-icon ribbon-icon-r" aria-hidden="true">R↥</span><span class="ribbon-button-label">Export to<br>RGrid R script</span>
+        </button>
+        <button id="exportCsvBtn" class="ribbon-command" type="button" title="Export all worksheet values as zipped CSV files">
+          <span class="ribbon-icon" aria-hidden="true">CSV</span><span class="ribbon-button-label">Export to CSV<br>(zipped, only values)</span>
+        </button>
+        <button id="exportXlsxBtn" class="ribbon-command" type="button" title="Export worksheet values to Excel">
+          <span class="ribbon-icon" aria-hidden="true">XLSX</span><span class="ribbon-button-label">Export to Excel<br>(only values)</span>
+        </button>
       </div>
     </nav>
 
-    <section class="formula-strip" aria-label="Formula bar">
-      <input id="nameBox" class="name-box" aria-label="Cell address or range name" spellcheck="false" autocomplete="off">
-      <a id="fxHelpLink" class="fx-badge" href="https://rdrr.io/r/" target="_blank" rel="noreferrer" title="Open the R function index">fx</a>
+    <section class="formula-strip" aria-label="Formula editor">
+      <input id="nameBox" class="name-box" type="text" value="A1" aria-label="Name box or cell address" spellcheck="false">
+      <a id="fxHelpLink" class="fx-badge" href="https://rdrr.io/r/" target="_blank" rel="help noopener" title="R function help – place the cursor on a function and press F1">fx</a>
       <div id="formulaEditor" class="formula-editor">
         <pre id="formulaHighlight" class="formula-highlight" aria-hidden="true"><code></code></pre>
-        <textarea id="formulaInput" class="formula-input" rows="1" aria-label="R formula" spellcheck="false" wrap="off" placeholder='Enter R, for example mean(ref("A1:A5"))'></textarea>
-        <div id="formulaEditorResizer" class="formula-editor-resizer" role="separator" aria-label="Resize formula editor" aria-orientation="horizontal" tabindex="0"></div>
+        <textarea id="formulaInput" class="formula-input" rows="1" spellcheck="false" aria-label="Cell value or R formula" placeholder="Type a value or begin an R formula with ="></textarea>
+        <div id="formulaEditorResizer" class="formula-editor-resizer" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="Resize formula editor"></div>
       </div>
-      <button id="commitFormulaBtn" class="commit-button" title="Commit formula">✓</button>
+      <button id="commitFormulaBtn" class="commit-button" type="button" title="Commit formula">✓</button>
     </section>
-    <div id="formulaMessage" class="formula-message" role="status" aria-live="polite"></div>
+
+    <div id="formulaMessage" class="formula-message" role="status" aria-live="polite">Ready</div>
 
     <main class="work-area">
       <div id="gridViewport" class="grid-viewport" tabindex="0" aria-label="Spreadsheet grid">
-        <table id="grid" class="grid" role="grid"></table>
+        <table id="grid" class="grid" aria-label="Worksheet"></table>
       </div>
-      <div id="plotPaneResizer" class="plot-pane-resizer" role="separator" aria-label="Resize plot pane" aria-orientation="vertical" aria-valuemin="280" tabindex="0" hidden></div>
-      <aside id="plotPane" class="plot-pane" aria-label="Plots generated by formulas" hidden>
-        <div class="plot-pane-header">
-          <div>
-            <strong>Plots</strong>
-            <span id="plotPaneCount" class="plot-pane-count"></span>
-          </div>
-          <button id="closePlotPaneBtn" class="plot-pane-close" type="button" aria-label="Hide plot pane">×</button>
-        </div>
+      <div id="plotPaneResizer" class="plot-pane-resizer" role="separator" aria-orientation="vertical" aria-label="Resize plot pane" aria-valuemin="280" aria-valuenow="390" tabindex="0" hidden></div>
+      <aside id="plotPane" class="plot-pane" aria-label="Plots" hidden>
+        <header class="plot-pane-header">
+          <div><strong>Plots</strong><span id="plotPaneCount" class="plot-pane-count"></span></div>
+          <button id="closePlotPaneBtn" class="plot-pane-close" type="button" aria-label="Close plot pane">×</button>
+        </header>
         <div id="plotList" class="plot-list"></div>
       </aside>
     </main>
 
     <footer class="bottom-bar">
       <div id="sheetTabs" class="sheet-tabs" role="tablist" aria-label="Worksheets"></div>
-      <div id="selectionSummary" class="selection-summary">Ready</div>
-      <div id="saveStatus" class="save-status">Local autosave enabled</div>
+      <div id="selectionSummary" class="selection-summary">A1</div>
+      <div id="saveStatus" class="save-status">Autosave pending</div>
     </footer>
   </div>
 
-  <dialog id="namesDialog" class="dialog names-dialog">
-    <form method="dialog" class="dialog-card" id="namesForm">
-      <div class="dialog-header">
-        <div>
-          <h2>Name manager</h2>
-          <p>Names may refer to a cell/range or contain an R value such as <code>function(x) x + 3</code>.</p>
-        </div>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
-      </div>
+  <div id="cellTooltip" class="cell-tooltip" role="tooltip" hidden></div>
+
+  <dialog id="namesDialog" class="dialog">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <div><h2>Name manager</h2><p>Create a named range or an R expression such as a constant or function.</p></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
       <div class="name-editor">
-        <label>Name<input id="newNameInput" spellcheck="false" autocomplete="off" placeholder="sales"></label>
-        <label>Refers to / R value<input id="newNameRefInput" spellcheck="false" autocomplete="off" placeholder="Sheet1!A1:B10 or function(x) x + 3"></label>
-        <button id="saveNameBtn" type="button">Add</button>
+        <label>Name<input id="newNameInput" type="text" autocomplete="off" spellcheck="false" placeholder="sales_total"></label>
+        <label>Range or expression<input id="newNameRefInput" type="text" autocomplete="off" spellcheck="false" placeholder="A1:B10 or =function(x) x * 2"></label>
+        <button id="saveNameBtn" type="button">Save name</button>
       </div>
       <div id="namesList" class="names-list"></div>
-      <div class="dialog-actions">
-        <button value="cancel">Done</button>
-      </div>
-    </form>
+      <div class="dialog-actions"><form method="dialog"><button>Close</button></form></div>
+    </div>
   </dialog>
 
-
-  <dialog id="plotSettingsDialog" class="dialog plot-settings-dialog">
-    <form method="dialog" class="dialog-card" id="plotSettingsForm">
-      <div class="dialog-header">
-        <div>
-          <h2>Plot resolution</h2>
-          <p>Set the final captured bitmap size used for recalculated R plots.</p>
-        </div>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
+  <dialog id="helpDialog" class="dialog">
+    <div class="dialog-card help-card">
+      <header class="dialog-header">
+        <div><h2>RGrid help &amp; cheatsheet</h2><p>Values, formulas, references, objects, imports, and plots.</p></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
+      <div class="help-content">
+        <h3>Start</h3>
+        <p>A new browser profile starts with a blank workbook. Use <strong>Load an example workbook</strong> for the five-sheet guided tour.</p>
+        <h3>Formulas</h3>
+        <p>Begin R code with <code>=</code>. Returned vectors, matrices, and data frames spill into neighbouring cells. Use <code>ref("B8#")</code> for a complete spill.</p>
+        <h3>References</h3>
+        <p>Use A1, R1C1, ranges, quoted sheet names, named ranges, named expressions, and function objects. Press F1 on <code>ref</code> for examples.</p>
+        <h3>Files</h3>
+        <p>Import tabular files into new worksheets. Export the full editable workbook as an executable R script or export calculated values to CSV or Excel.</p>
+        <p><a href="help.html" target="_blank" rel="help">Open the full help page</a></p>
       </div>
-      <div class="plot-resolution-editor">
+      <div class="dialog-actions"><form method="dialog"><button>Close</button></form></div>
+    </div>
+  </dialog>
+
+  <dialog id="refHelpDialog" class="dialog">
+    <div class="dialog-card ref-help-card">
+      <header class="dialog-header">
+        <div><h2><code>ref()</code> reference guide</h2><p>A case-insensitive Excel-style reference bridge from R formulas to workbook cells.</p></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
+      <div class="help-content ref-help-examples">
+        <article><h3>Single cell</h3><pre><code>=ref("A1")
+=ref("r8c2")</code></pre><p>A1 and R1C1 addresses are accepted and are case-insensitive.</p></article>
+        <article><h3>Rectangular range</h3><pre><code>=ref("A1:G5")</code></pre><p>A range becomes an R scalar, vector, or matrix as appropriate.</p></article>
+        <article><h3>Dynamic spill</h3><pre><code>=ref("B8#")</code></pre><p>The trailing hash reads the complete spill and preserves supported R objects.</p></article>
+        <article><h3>Another worksheet</h3><pre><code>=ref("'Data &amp; Pivot'!A5#")</code></pre><p>Quote sheet names containing spaces or punctuation.</p></article>
+        <article><h3>Workbook name</h3><pre><code>=mean(ref("example_numbers"))</code></pre><p>Create named ranges, expressions, and functions with the Name manager.</p></article>
+      </div>
+      <div class="dialog-actions"><form method="dialog"><button class="primary-button">Got it</button></form></div>
+    </div>
+  </dialog>
+
+  <dialog id="objectDialog" class="dialog">
+    <div class="dialog-card object-dialog-card">
+      <header class="dialog-header">
+        <div><h2 id="objectDialogTitle">R object</h2><p id="objectDialogSubtitle">Object tree</p></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
+      <div class="object-toolbar"><button id="expandObjectTreeBtn" type="button" aria-expanded="false">Expand all</button></div>
+      <div id="objectTree" class="object-tree" tabindex="0"></div>
+      <div class="dialog-actions"><form method="dialog"><button>Close</button></form></div>
+    </div>
+  </dialog>
+
+  <dialog id="plotSettingsDialog" class="dialog">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <div><h2>Plot size</h2><p>Choose the final image dimensions for newly calculated plots.</p></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
+      <div class="help-content plot-resolution-editor">
         <label>Preset
           <select id="plotResolutionPreset">
-            <option value="800x600">800 × 600</option>
-            <option value="1008x672">1008 × 672</option>
-            <option value="1280x720">1280 × 720</option>
-            <option value="1600x1000">1600 × 1000</option>
-            <option value="1920x1080">1920 × 1080</option>
-            <option value="2560x1440">2560 × 1440</option>
-            <option value="3840x2160">3840 × 2160</option>
+            <option value="756x504">Small – 756 × 504</option>
+            <option value="1008x672">Medium – 1008 × 672</option>
+            <option value="1512x1008">Large – 1512 × 1008</option>
             <option value="custom">Custom</option>
           </select>
         </label>
         <div class="plot-resolution-size">
-          <label>Width
-            <input id="plotWidthInput" type="number" min="320" max="4096" step="2" inputmode="numeric">
-          </label>
-          <span aria-hidden="true">×</span>
-          <label>Height
-            <input id="plotHeightInput" type="number" min="240" max="4096" step="2" inputmode="numeric">
-          </label>
+          <label>Width<input id="plotWidthInput" type="number" min="320" max="4096" step="2"></label>
+          <span>×</span>
+          <label>Height<input id="plotHeightInput" type="number" min="240" max="4096" step="2"></label>
           <span class="plot-resolution-unit">px</span>
         </div>
         <p id="plotResolutionHelp" class="plot-resolution-help"></p>
       </div>
-      <div class="dialog-actions">
-        <button value="cancel">Cancel</button>
-        <button id="applyPlotResolutionBtn" type="button" class="primary-button">Apply and recalculate</button>
-      </div>
-    </form>
+      <div class="dialog-actions"><button id="applyPlotResolutionBtn" class="primary-button" type="button">Apply and recalculate</button></div>
+    </div>
   </dialog>
 
-  <dialog id="objectDialog" class="dialog object-dialog">
-    <form method="dialog" class="dialog-card object-dialog-card">
-      <div class="dialog-header">
-        <div>
-          <h2 id="objectDialogTitle">R object</h2>
-          <p id="objectDialogSubtitle"></p>
-        </div>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <div id="objectTree" class="object-tree" tabindex="0"></div>
-      <div class="dialog-actions object-dialog-actions">
-        <button id="expandObjectTreeBtn" type="button" aria-expanded="false" disabled>Expand all</button>
-        <button value="cancel">Close</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="helpDialog" class="dialog help-dialog">
-    <form method="dialog" class="dialog-card help-dialog-card">
-      <div class="dialog-header">
-        <div><h2>RGrid help and keyboard cheatsheet</h2><p>R formulas run locally in your browser through webR.</p></div>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <div class="help-content">
-        <section><h3>Formula essentials</h3><pre>=mean(ref("A1:A10"))
-=ref("D3#")
-={library(magrittr); rnorm(100) %>% matrix(ncol = 2)}
-=function(x) x + 3
-=\(x) x + 3</pre></section>
-        <section><h3>Keyboard</h3><div class="shortcut-grid">
-          <kbd>Enter</kbd><span>Commit and move down</span>
-          <kbd>Alt+Enter</kbd><span>Insert a line break in a formula</span>
-          <kbd>Selected text + quote/bracket</kbd><span>Wrap the selection in quotes, parentheses, brackets, or braces</span>
-          <kbd>Esc</kbd><span>Cancel editing or close the object tree</span>
-          <kbd>Ctrl+C / Ctrl+V</kbd><span>Copy and paste formulas and values</span>
-          <kbd>Ctrl+Z / Ctrl+Y</kbd><span>Undo and redo</span>
-          <kbd>Shift+Arrow</kbd><span>Extend the selection</span>
-          <kbd>Ctrl+Arrow</kbd><span>Jump to a data-region edge</span>
-          <kbd>Ctrl+Shift+Arrow</kbd><span>Extend to a data-region edge</span>
-          <kbd>Delete</kbd><span>Clear selected cells</span>
-          <kbd>F1</kbd><span>Open help for the function under the formula cursor; ref() help stays inside RGrid</span>
-          <kbd>F2</kbd><span>Edit the active cell formula</span>
-        </div></section>
-        <section><h3>Mouse</h3><p>Drag cells to select a range. While editing a formula, the selection is inserted as <code>ref("A1:G8")</code> or an R1C1 reference, depending on the current display style. Double-click a plot cell to reveal its plot, or a list cell to open its tree. Click <strong>fx</strong> to open the R function index.</p></section>
-        <section><h3>Data import</h3><p><strong>Import data</strong> adds CSV and TSV files as new worksheets and adds every worksheet from an Excel file. Only calculated/cached values are imported.</p></section>
-        <section><h3>Documentation</h3><p><a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noreferrer">webR documentation</a> · <a href="README.md" target="_blank">RGrid README</a></p></section>
-      </div>
-      <div class="dialog-actions"><button value="cancel">Close</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="refHelpDialog" class="dialog ref-help-dialog" aria-labelledby="refHelpTitle">
-    <form method="dialog" class="dialog-card ref-help-dialog-card">
-      <div class="dialog-header ref-help-header">
-        <div class="ref-help-heading">
-          <span class="ref-help-icon" aria-hidden="true">ref</span>
-          <div>
-            <h2 id="refHelpTitle"><code>ref()</code> worksheet references</h2>
-            <p>Read cells, ranges, dynamic spills, and Name manager values from an R formula.</p>
-          </div>
-        </div>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
-      </div>
-      <div class="ref-help-content">
-        <p class="ref-help-lead"><code>ref()</code> takes one string containing a case-insensitive Excel-style reference and returns the value identified by it.</p>
-        <div class="ref-help-examples">
-          <article><code>ref("A1")</code><span>A single cell in A1 notation</span></article>
-          <article><code>ref("R1C1")</code><span>A single cell in R1C1 notation</span></article>
-          <article><code>ref("A1:G5")</code><span>A rectangular range</span></article>
-          <article><code>ref("B8#")</code><span>The complete dynamic spill anchored at B8</span></article>
-          <article><code>ref("sales")</code><span>A range or R expression defined in Name manager</span></article>
-        </div>
-        <div class="ref-help-note">
-          <strong>References are case-insensitive.</strong> For example, <code>ref("a1")</code> and <code>ref("A1")</code> refer to the same cell. A named expression returns its evaluated R value.
-        </div>
-      </div>
-      <div class="dialog-actions"><button value="cancel" class="primary-button">Got it</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="messageDialog" class="dialog message-dialog">
-    <form method="dialog" class="dialog-card">
-      <div class="dialog-header">
-        <h2 id="messageTitle">Message</h2>
-        <button value="cancel" class="icon-button" aria-label="Close">×</button>
-      </div>
+  <dialog id="messageDialog" class="dialog">
+    <div class="dialog-card">
+      <header class="dialog-header">
+        <div><h2 id="messageTitle">Message</h2></div>
+        <form method="dialog"><button class="icon-button" aria-label="Close">×</button></form>
+      </header>
       <pre id="messageBody" class="message-body"></pre>
-      <div class="dialog-actions">
-        <button value="cancel">Close</button>
-      </div>
-    </form>
+      <div class="dialog-actions"><form method="dialog"><button>Close</button></form></div>
+    </div>
   </dialog>
 
   <div id="busyOverlay" class="busy-overlay" role="status" aria-live="polite">
-    <span class="busy-spinner" aria-hidden="true"></span>
-    <span id="busyText">Loading webR…</span>
+    <div class="busy-spinner" aria-hidden="true"></div>
+    <div id="busyText">Loading webR…</div>
   </div>
 
   <script src="vendor/codemirror/lib/codemirror.js"></script>

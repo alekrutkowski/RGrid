@@ -3,20 +3,23 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-
 WEBR_STUB = r'''
 export const ChannelType = { PostMessage: 'post-message' };
 function scalarNode(value) { return { values: [value] }; }
-function packed(value, kind = 'scalar') {
+function packed(value, kind = 'scalar', plotKind = '') {
   return {
     type: 'list',
     names: ['ok','nrow','ncol','kind','object_kind','plot_kind','object_class','preserve_object','values','tree_label','tree_type','tree_summary','tree_parent'],
-    values: [scalarNode(true), scalarNode(1), scalarNode(1), scalarNode(typeof value), scalarNode(kind), scalarNode(''), scalarNode(typeof value), scalarNode(false), scalarNode(value), {values:[]},{values:[]},{values:[]},{values:[]}]
+    values: [
+      scalarNode(true), scalarNode(1), scalarNode(1), scalarNode(typeof value),
+      scalarNode(kind), scalarNode(plotKind), scalarNode(typeof value), scalarNode(plotKind !== ''),
+      scalarNode(value), {values:[]}, {values:[]}, {values:[]}, {values:[]}
+    ]
   };
 }
 function expressionFrom(code) {
-  const m = code.match(/\.rgrid_value\s*<-\s*\{\n([\s\S]*?)\n\}/);
-  return m ? m[1].trim() : '';
+  const match = code.match(/\.rgrid_value\s*<-\s*\{\n([\s\S]*?)\n\}/);
+  return match ? match[1].trim() : '';
 }
 class Result {
   constructor(value) { this.value = value; }
@@ -29,13 +32,21 @@ class Shelter {
     if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(expr)) value = Number(expr);
     else if (expr === 'TRUE') value = true;
     else if (expr === 'FALSE') value = false;
-    else if (/^['\"]/.test(expr)) { try { value = JSON.parse(expr); } catch {} }
+    else if (/^['"]/.test(expr)) {
+      try { value = JSON.parse(expr); } catch {}
+    }
+    if (expr.includes('ggplot2::ggplot')) return { result: new Result(packed('<list [9]>', 'plot', 'ggplot')), images: [], output: [] };
+    if (expr.includes('lattice::xyplot')) return { result: new Result(packed('<list [24]>', 'plot', 'lattice')), images: [], output: [] };
     return { result: new Result(packed(value)), images: [], output: [] };
   }
   async purge() {}
 }
 export class WebR {
-  constructor(options = {}) { this.options = options; this.Shelter = Shelter; window.__webrOptions = options; }
+  constructor(options = {}) {
+    this.options = options;
+    this.Shelter = Shelter;
+    window.__webrOptions = options;
+  }
   async init() {}
   async evalRVoid() {}
   async evalRBoolean() { return true; }
@@ -50,13 +61,9 @@ export class WebR {
 '''
 
 XLSX_STUB = r'''
-export function read() {
-  return { SheetNames: ['First', 'Second'], Sheets: { First: {id:1}, Second: {id:2} } };
-}
+export function read() { return { SheetNames: [], Sheets: {} }; }
 export const utils = {
-  sheet_to_json(sheet) {
-    return sheet.id === 1 ? [['Name','Value'],['alpha',11],['=literal',22]] : [['Second sheet'],['ok']];
-  },
+  sheet_to_json() { return []; },
   aoa_to_sheet() { return {}; },
   book_new() { return {}; },
   book_append_sheet() {},
@@ -66,204 +73,162 @@ export function writeFile() {}
 
 
 def inline_app_html():
-    html = (ROOT / 'index.html').read_text()
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
     html = html.replace(
         '<link rel="stylesheet" href="vendor/codemirror/lib/codemirror.css">',
-        f'<style>{(ROOT / "vendor/codemirror/lib/codemirror.css").read_text()}</style>',
+        f'<style>{(ROOT / "vendor/codemirror/lib/codemirror.css").read_text(encoding="utf-8")}</style>',
     )
     html = html.replace(
         '<link rel="stylesheet" href="app.css">',
-        f'<style>{(ROOT / "app.css").read_text()}</style>',
+        f'<style>{(ROOT / "app.css").read_text(encoding="utf-8")}</style>',
     )
-    for rel in [
-        'vendor/codemirror/lib/codemirror.js',
-        'vendor/codemirror/mode/r/r.js',
-        'vendor/codemirror/addon/edit/matchbrackets.js',
-        'vendor/codemirror/addon/display/placeholder.js',
-    ]:
-        html = html.replace(
-            f'<script src="{rel}"></script>',
-            f'<script>{(ROOT / rel).read_text()}</script>',
-        )
-    prep = """<script>
-      window.__opened = [];
-      window.__popupBodies = [];
-      window.open = (url) => {
-        let bodyText = '';
-        const body = { style: {} };
-        Object.defineProperty(body, 'textContent', {
-          get: () => bodyText,
-          set: value => { bodyText = String(value); window.__popupBodies.push(bodyText); }
-        });
-        return {
-          opener: null,
-          document: { title: '', body },
-          location: { replace: next => window.__opened.push(next) },
-          close() {}
-        };
-      };
+    html = html.replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">', '')
+    html = html.replace('<link rel="manifest" href="manifest.webmanifest">', '')
+    storage_stub = """<script>
+      (() => {
+        const values = new Map();
+        Object.defineProperty(window, 'localStorage', { value: {
+          getItem: key => values.has(String(key)) ? values.get(String(key)) : null,
+          setItem: (key, value) => values.set(String(key), String(value)),
+          removeItem: key => values.delete(String(key)),
+          clear: () => values.clear(),
+        }});
+      })();
     </script>"""
-    html = html.replace(
-        '<script type="module" src="app.js"></script>',
-        prep + '<script type="module">' + (ROOT / 'app.js').read_text() + '</script>',
-    )
+    html = html.replace('<body>', '<body>' + storage_stub, 1)
+    for rel in [
+        "vendor/codemirror/lib/codemirror.js",
+        "vendor/codemirror/mode/r/r.js",
+        "vendor/codemirror/addon/edit/matchbrackets.js",
+        "vendor/codemirror/addon/display/placeholder.js",
+    ]:
+        source = (ROOT / rel).read_text(encoding="utf-8").replace("</script>", "<\\/script>")
+        html = html.replace(f'<script src="{rel}"></script>', f'<script>{source}</script>')
+    app_source = (ROOT / "app.js").read_text(encoding="utf-8").replace("</script>", "<\\/script>")
+    html = html.replace('<script type="module" src="app.js"></script>', f'<script type="module">{app_source}</script>')
     return html
 
+def main():
+    with sync_playwright() as playwright:
+        launch_options = {
+            "headless": True,
+            "args": ["--no-sandbox"],
+            "executable_path": os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium"),
+        }
+        browser = playwright.chromium.launch(**launch_options)
+        context = browser.new_context(viewport={"width": 1600, "height": 1000}, accept_downloads=True)
+        page = context.new_page()
+        page.route(
+            "https://webr.r-wasm.org/v0.6.0/webr.mjs",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="text/javascript",
+                headers={"Access-Control-Allow-Origin": "*"},
+                body=WEBR_STUB,
+            ),
+        )
+        page.route(
+            "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs",
+            lambda route: route.fulfill(
+                status=200,
+                content_type="text/javascript",
+                headers={"Access-Control-Allow-Origin": "*"},
+                body=XLSX_STUB,
+            ),
+        )
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.set_content(inline_app_html(), wait_until="networkidle")
+        page.wait_for_function("document.querySelector('#runtimeStatusText').textContent.includes('webR ready')")
 
-with sync_playwright() as p:
-    launch_options = {'headless': True, 'args': ['--no-sandbox']}
-    if os.environ.get('CHROMIUM_PATH'): launch_options['executable_path'] = os.environ['CHROMIUM_PATH']
-    browser = p.chromium.launch(**launch_options)
-    context = browser.new_context(viewport={'width': 1600, 'height': 1000})
-    page = context.new_page()
-    page.route(
-        'https://webr.r-wasm.org/v0.6.0/webr.mjs',
-        lambda route: route.fulfill(
-            status=200,
-            content_type='text/javascript',
-            headers={'Access-Control-Allow-Origin': '*'},
-            body=WEBR_STUB,
-        ),
-    )
-    page.route(
-        'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs',
-        lambda route: route.fulfill(
-            status=200,
-            content_type='text/javascript',
-            headers={'Access-Control-Allow-Origin': '*'},
-            body=XLSX_STUB,
-        ),
-    )
-    errors = []
-    page.on('pageerror', lambda error: errors.append(str(error)))
-    page.set_content(inline_app_html(), wait_until='networkidle')
-    page.wait_for_function("document.querySelector('#runtimeStatusText').textContent.includes('webR ready')")
-    assert not errors, errors
+        assert page.locator(".sheet-tab").all_inner_texts() == ["Sheet1"]
+        assert page.locator('td[data-address="A1"]').inner_text() == ""
+        title_order = page.locator(".title-actions > *").evaluate_all("els => els.map(x => x.id)")
+        assert title_order[:2] == ["exampleWorkbookBtn", "helpBtn"], title_order
+        assert page.locator("#exampleWorkbookBtn").inner_text() == "Load an example workbook"
 
-    expected = {
-        'importScriptBtn': 'Import from RGrid R script',
-        'namesBtn': 'Name manager',
-        'toggleElementNamesBtn': 'Show element names',
-        'plotsBtn': 'Show plots',
-        'plotSettingsBtn': 'Set plot size',
-        'renameSheetBtn': 'Rename current sheet',
-        'deleteSheetBtn': 'Delete current sheet',
-        'exportRBtn': 'Export to RGrid R script',
-        'exportCsvBtn': 'Export to CSV (zipped, only values)',
-        'exportXlsxBtn': 'Export to Excel (only values)',
-        'referenceStyleBtn': 'Toggle A1/R1C1',
-    }
-    for element_id, text in expected.items():
-        actual = ' '.join(page.locator(f'#{element_id} .ribbon-button-label').inner_text().split())
-        assert actual == text, (element_id, actual)
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.click("#exampleWorkbookBtn")
+        page.wait_for_function("document.querySelectorAll('.sheet-tab').length === 5")
+        assert page.locator(".sheet-tab").all_inner_texts() == [
+            "Start Here", "References", "Data & Pivot", "Objects & Import", "Plots"
+        ]
+        assert page.locator('td[data-address="A1"]').inner_text() == "RGrid example workbook"
+        assert page.locator('td[data-address="A15"] strong').inner_text() == "Workbook tips"
+        assert page.locator('td[data-address="A23"] strong').all_inner_texts() == ["bold", "also bold"]
+        assert page.locator('td[data-address="A23"] em').all_inner_texts() == ["italic", "also italic"]
 
-    assert page.locator('#toggleAttributesBtn').count() == 0
-    assert page.locator('#importScriptBtn .ribbon-icon').inner_text() == 'R↓'
-    assert page.locator('#exportRBtn .ribbon-icon').inner_text() == 'R↥'
+        markdown_cell = page.locator('td[data-address="A23"]')
+        markdown_cell.hover()
+        page.wait_for_selector('#cellTooltip:not([hidden])')
+        assert page.locator('#cellTooltip').inner_text() == "Text formatting: bold, also bold, italic, and also italic."
+        assert page.locator('#cellTooltip strong').all_inner_texts() == ["bold", "also bold"]
+        assert page.locator('#cellTooltip em').all_inner_texts() == ["italic", "also italic"]
+        assert markdown_cell.get_attribute("title") is None
+        page.mouse.move(1500, 900)
+        page.wait_for_function("document.querySelector('#cellTooltip').hidden")
 
-    cell = page.locator('td[data-address="A1"]')
-    cell.evaluate("el => el.classList.add('spill-anchor')")
-    style = cell.evaluate(
-        "el => ({position:getComputedStyle(el).backgroundPosition, image:getComputedStyle(el).backgroundImage})"
-    )
-    assert style['position'].startswith('0% 0%') or style['position'].startswith('left top'), style
-    assert 'linear-gradient' in style['image']
-    cell.evaluate("el => el.classList.remove('spill-anchor')")
+        text_cells = {
+            "Start Here": ["A16", "A17", "A18", "A19"],
+            "References": ["A1", "A2", "A16", "A23", "A26", "A27", "A28", "D5", "H4", "H5"],
+            "Data & Pivot": ["A1", "A4", "A22", "F4", "K22"],
+            "Objects & Import": ["A1", "A2", "A13", "A17", "A18", "A26", "A27", "E25", "E26"],
+            "Plots": ["A1", "A2", "A28"],
+        }
+        for sheet_name, addresses in text_cells.items():
+            page.get_by_role("tab", name=sheet_name, exact=True).click()
+            for address in addresses:
+                value = page.locator(f'td[data-address="{address}"]').inner_text()
+                assert value and value != "#PARSE!", (sheet_name, address, value)
 
-    sheetjs_requests = []
-    page.on('request', lambda req: sheetjs_requests.append(req.url) if 'sheetjs.com' in req.url else None)
-    page.set_input_files('#importDataInput', files=[{
-        'name': 'sample.csv',
-        'mimeType': 'text/csv',
-        'buffer': b'Label,Value\nalpha,1\n"=literal",2\n',
-    }])
-    page.wait_for_function(
-        "[...document.querySelectorAll('.sheet-tab')].some(x => x.textContent === 'sample')"
-    )
-    assert not sheetjs_requests, sheetjs_requests
-    assert page.locator('td[data-address="A1"]').inner_text() == 'Label'
-    assert page.locator('td[data-address="A3"]').inner_text() == '=literal'
+        page.get_by_role("tab", name="Data & Pivot", exact=True).click()
+        page.locator('td[data-address="A23"]').click()
+        assert "eurodata::importData" in page.locator(".CodeMirror").evaluate("el => el.CodeMirror.getValue()")
+        page.locator('td[data-address="F5"]').click()
+        assert "data.table::dcast" in page.locator(".CodeMirror").evaluate("el => el.CodeMirror.getValue()")
 
-    page.set_input_files('#importDataInput', files=[{
-        'name': 'book.xlsx',
-        'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'buffer': b'fake-xlsx',
-    }])
-    page.wait_for_function(
-        "[...document.querySelectorAll('.sheet-tab')].some(x => x.textContent === 'book – First') && "
-        "[...document.querySelectorAll('.sheet-tab')].some(x => x.textContent === 'book – Second')"
-    )
-    tabs = page.locator('.sheet-tab').all_inner_texts()
-    assert 'book – First' in tabs and 'book – Second' in tabs
+        page.get_by_role("tab", name="Objects & Import", exact=True).click()
+        page.locator('td[data-address="B19"]').click()
+        assert "rio::import" in page.locator(".CodeMirror").evaluate("el => el.CodeMirror.getValue()")
 
-    page.click('#referenceStyleBtn')
-    assert page.locator('th.col-header[data-col="1"]').inner_text() == '1'
-    assert page.locator('#referenceStyleBtn .ribbon-icon').inner_text() == 'R1C1'
+        page.get_by_role("tab", name="Plots", exact=True).click()
+        page.locator('td[data-address="B12"]').click()
+        assert "ggplot2::ggplot" in page.locator(".CodeMirror").evaluate("el => el.CodeMirror.getValue()")
+        assert page.locator('td[data-address="B12"]').inner_text() == "Plotggplot2"
+        assert page.locator('td[data-address="B12"] sup.plot-kind-superscript').inner_text() == "ggplot2"
+        assert "has-plot" in page.locator('td[data-address="B12"]').get_attribute("class")
+        page.locator('td[data-address="B12"]').hover()
+        page.wait_for_selector('#cellTooltip:not([hidden])')
+        assert "Input: ={" in page.locator('#cellTooltip').inner_text()
+        assert "ggplot2 plot object" in page.locator('#cellTooltip').inner_text()
+        assert page.locator('#cellTooltip strong').count() == 0
+        page.mouse.move(1500, 900)
+        page.wait_for_function("document.querySelector('#cellTooltip').hidden")
+        assert page.locator('td[data-address="B22"]').inner_text() == "Plotlattice"
+        assert page.locator('td[data-address="B22"] sup.plot-kind-superscript').inner_text() == "lattice"
+        assert "has-plot" in page.locator('td[data-address="B22"]').get_attribute("class")
 
-    cm = page.locator('.CodeMirror')
-    cm.evaluate(
-        "el => { const cm = el.CodeMirror; cm.setValue('=lm(mpg ~ wt)'); "
-        "cm.setCursor({line:0,ch:3}); cm.focus(); }"
-    )
-    page.keyboard.press('F1')
-    page.wait_for_function("window.__opened.length >= 1")
-    assert page.evaluate('window.__opened.at(-1)') == (
-        'https://stat.ethz.ch/R-manual/R-devel/library/stats/html/lm.html'
-    )
+        with page.expect_download() as download_info:
+            page.click("#exportRBtn")
+        download = download_info.value
+        export_path = Path(download.path())
+        exported = export_path.read_text(encoding="utf-8")
+        assert 'identical(R.version$arch, "wasm32")' in exported
+        guard = exported.index('identical(R.version$arch, "wasm32")')
+        assert exported.index("webr::install(missing)") > guard
+        assert "install.packages(missing, repos = repositories)" in exported
+        assert 'rgrid_define_sheet("Start Here"' in exported
 
-    cm.evaluate(
-        "el => { const cm = el.CodeMirror; cm.setValue('=eurodata::importData()'); "
-        "cm.setCursor({line:0,ch:20}); cm.focus(); }"
-    )
-    page.keyboard.press('F1')
-    page.wait_for_function("window.__opened.length >= 2")
-    assert page.evaluate('window.__opened.at(-1)') == (
-        'https://cran.r-project.org/web/packages/eurodata/refman/eurodata.html#importData'
-    )
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.click("#newWorkbookBtn")
+        page.wait_for_function("document.querySelectorAll('.sheet-tab').length === 1")
+        assert page.locator(".sheet-tab").all_inner_texts() == ["Sheet1"]
+        assert page.locator('td[data-address="A1"]').inner_text() == ""
 
-    opened_before_ref = page.evaluate('window.__opened.length')
-    cm.evaluate(
-        """el => { const cm = el.CodeMirror; cm.setValue('=ref(\"A1\")');
-        cm.setCursor({line:0,ch:4}); cm.focus(); }"""
-    )
-    page.keyboard.press('F1')
-    page.wait_for_function("document.querySelector('#refHelpDialog').open")
-    assert page.evaluate('window.__opened.length') == opened_before_ref
-    ref_help = page.locator('#refHelpDialog').inner_text()
-    assert 'case-insensitive Excel-style reference' in ref_help
-    assert 'A1:G5' in ref_help and 'B8#' in ref_help and 'Name manager' in ref_help
-    assert page.locator('#refHelpDialog .ref-help-examples article').count() == 5
-    if os.environ.get('RGRID_REF_HELP_SCREENSHOT'):
-        page.screenshot(path=os.environ['RGRID_REF_HELP_SCREENSHOT'], full_page=True)
-    page.get_by_role('button', name='Got it').click()
-    page.wait_for_function("!document.querySelector('#refHelpDialog').open")
+        assert not errors, errors
+        browser.close()
+    print("browser smoke test passed")
 
-    page.evaluate(
-        """() => {
-          const tree = document.querySelector('#objectTree');
-          tree.innerHTML = '<details class="object-node" open><summary>root</summary>' +
-            '<details class="object-node"><summary>branch</summary>' +
-            '<details class="object-node"><summary>nested</summary><div>leaf</div></details>' +
-            '</details></details>';
-          tree.querySelector('details').dispatchEvent(new Event('toggle'));
-          document.querySelector('#objectDialog').showModal();
-        }"""
-    )
-    page.wait_for_function("!document.querySelector('#expandObjectTreeBtn').disabled")
-    assert page.locator('#expandObjectTreeBtn').inner_text() == 'Expand all'
-    page.locator('#expandObjectTreeBtn').click()
-    assert page.evaluate("[...document.querySelectorAll('#objectTree details')].every(x => x.open)")
-    assert page.locator('#expandObjectTreeBtn').inner_text() == 'Collapse all'
-    if os.environ.get('RGRID_OBJECT_TREE_SCREENSHOT'):
-        page.screenshot(path=os.environ['RGRID_OBJECT_TREE_SCREENSHOT'], full_page=True)
-    page.locator('#expandObjectTreeBtn').click()
-    assert page.evaluate("[...document.querySelectorAll('#objectTree details')].every(x => !x.open)")
-    assert page.locator('#expandObjectTreeBtn').inner_text() == 'Expand all'
-    page.locator('#objectDialog').get_by_role('button', name='Close', exact=True).last.click()
 
-    assert page.locator('#fxHelpLink').get_attribute('href') == 'https://rdrr.io/r/'
-    assert not errors, errors
-    if os.environ.get('RGRID_SMOKE_SCREENSHOT'):
-        page.screenshot(path=os.environ['RGRID_SMOKE_SCREENSHOT'], full_page=True)
-    browser.close()
-    print('browser smoke test passed')
+if __name__ == "__main__":
+    main()

@@ -4,7 +4,7 @@
 
 RGrid is a static, browser-only reactive spreadsheet with an Excel-like grid and [R](https://en.wikipedia.org/wiki/R_%28programming_language%29) as its formula language. Formulas run locally through [webR](https://docs.r-wasm.org/webr). There is no application server and workbook data is not sent to a calculation backend. The app has been made with GPT-5.5-Thinking.
 
-![RGrid 0.8.0 interface](docs/rgrid-v8.png)
+![RGrid 0.9.2 example workbook](docs/rgrid-v10.png)
 
 ## Live deployment
 
@@ -36,6 +36,20 @@ Rscript serve.R
 
 The supplied local servers add cross-origin isolation headers suitable for webR.
 
+## Starting state and example workbook
+
+A fresh browser profile with no RGrid autosave starts with one empty worksheet. The **New workbook** command also creates a blank workbook.
+
+Use the title-bar **Load an example workbook** button to replace the current workbook with a five-sheet guided workbook:
+
+- **Start Here** – values, formulas, dynamic spills, named ranges, named expressions, and named functions.
+- **References** – A1 and R1C1 cells, ranges, quoted cross-sheet references, spill references, preserved objects, blank cells, literal formula-looking text, and safe descriptions of error corner cases.
+- **Data & Pivot** – a long `data.table`, `data.table::dcast()` pivot-table patterns, and a narrowly filtered `eurodata::importData()` request.
+- **Objects & Import** – nested R lists, vectors, matrices, function objects, `rio::import()`, data-file import semantics, zero-length values, `NULL`, and missing values.
+- **Plots** – base R graphics, multiple base plots from one formula, a returned ggplot2 object, a returned lattice object, and a plot driven by cross-sheet data.
+
+The formulas contain comments intended to be read in the formula editor. Some examples install CRAN packages or fetch a small public dataset when they are first calculated.
+
 ## Data import
 
 Use **Import data** to add external values as new worksheets.
@@ -64,6 +78,17 @@ A cell formula is an R expression. A leading `=` is optional for expressions tha
 ```
 
 Braces may contain multiple expressions. The value of the final expression becomes the cell result.
+
+Plain text is detected positively rather than by punctuation. Labels containing commas, colons, hyphens, parentheses, `+`, or `!` remain text unless they clearly form an R expression. A leading `=` is recommended whenever an expression could be ambiguous.
+
+Text-cell display supports minimal inline Markdown: `**bold**` and `__bold__` render in bold; `*italic*` and `_italic_` render in italics. The stored cell input remains unchanged. Hovering over a pure text cell shows its complete content in a Markdown-aware pop-up, which is useful when the column is too narrow.
+
+
+### Package use across cells
+
+RGrid detects package dependencies in both `library(package)` or `require(package)` calls and qualified calls such as `package::function()`. Missing browser packages are installed before evaluation.
+
+All worksheets share one R session. After a `library(data.table)` cell evaluates successfully, the package is attached to the shared search path and unqualified functions are available from cells in every sheet. On a fresh recalculation, calculation order still matters for independent cells, and visual sheet position alone does not create a dependency. Use an explicit `ref()` dependency or, preferably, `data.table::dcast()`-style qualified calls when a formula should not depend on another cell running first. Qualified `::` calls use the package namespace without attaching it or adding names to the shared search path.
 
 ### References and dynamic arrays
 
@@ -118,7 +143,7 @@ Autosave and R-script restoration retain this setting.
 
 ## R packages
 
-The evaluator detects packages used through `library()`, `require()`, `pkg::fun`, and `pkg:::fun`. Missing webR-compatible packages are installed in the browser before evaluation. Installation or compatibility failures produce `#PKG!` and show the underlying R condition beneath the formula bar and in the cell tooltip.
+The evaluator detects packages used through `library()`, `require()`, `pkg::fun`, and `pkg:::fun`. Missing webR-compatible packages are installed in the browser before evaluation. The example workbook deliberately exercises `data.table`, `eurodata`, `rio`, `ggplot2`, and `lattice`. Installation or compatibility failures produce `#PKG!` and show the underlying R condition beneath the formula bar and in the cell tooltip.
 
 ## Formula editor
 
@@ -169,7 +194,7 @@ Base R graphics are captured from formulas and displayed in the resizable **Plot
 ```
 
 - Double-click a plot cell to reveal its plot.
-- ggplot2 cells use the plot marker with a small `gg` superscript.
+- ggplot2 cells display `Plot` with `ggplot2` in superscript; lattice cells display `Plot` with `lattice` in superscript. Both use the small plot marker in the top-left corner.
 - The pane scrolls vertically and preserves the full aspect ratio of landscape, square, and portrait plots.
 - Drag the pane's left divider to change its width.
 - Use **Set plot size** for presets or custom bitmap dimensions from 320 × 240 to 4096 × 4096 pixels.
@@ -214,7 +239,7 @@ The workbook, view settings, formula-editor height, plot-pane width, plot resolu
 
 - Cells are registered in workbook call order.
 - Dependencies determine calculation order.
-- Package installation uses `webr::install()` in webR and `install.packages()` in desktop R.
+- Package installation uses `webr::install()` only when `R.version$arch` is exactly `"wasm32"`; all other architectures use `install.packages()`. The exported file can therefore be sourced by a standard R interpreter without a `webr` package dependency.
 - `rgrid$objects` contains preserved calculated R objects.
 - `rgrid$values` contains typed calculated cell contents.
 - `rgrid$display` contains console-friendly sheet matrices.
@@ -245,6 +270,6 @@ For an offline deployment, self-host the matching webR release assets and SheetJ
 
 ## Scope
 
-RGrid supports multiple sheets, external value import, names, A1/R1C1 display, object-preserving R references, dynamic arrays, automatic grid growth, package loading, plots, formula-aware clipboard operations, local autosave, themes, undo and redo, executable R export, and calculated CSV and Excel exports.
+RGrid supports blank startup, an optional five-sheet example workbook, multiple sheets, external value import, names, A1/R1C1 display, object-preserving R references, dynamic arrays, automatic grid growth, package loading, plots, formula-aware clipboard operations, local autosave, themes, undo and redo, executable R export, and calculated CSV and Excel exports.
 
 It does not reproduce Excel formatting, merged cells, macros, Excel chart objects, relative-reference rewriting during formula copy, or collaboration.
