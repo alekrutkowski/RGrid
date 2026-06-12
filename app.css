@@ -286,6 +286,12 @@ code, pre, .formula-input, .formula-highlight, .cell { font-family: "Cascadia Co
 .cell.error { color: var(--error); font-weight: 650; }
 .cell.selected { background: var(--selection); }
 .cell.active { box-shadow: inset 0 0 0 2px var(--selection-border); z-index: 2; }
+.col-header.active-header,
+.row-header.active-header {
+  color: var(--green-900);
+  background: var(--selection);
+  box-shadow: inset 0 0 0 2px var(--selection-border);
+}
 .cell.formula-ref-target {
   background: #eaf3ff;
   box-shadow: inset 0 0 0 2px #2f6fbb;

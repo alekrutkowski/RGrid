@@ -3,6 +3,8 @@ const PLOT_PANE_WIDTH_KEY = 'rgrid.webr.plotPaneWidth.v1';
 const PLOT_RESOLUTION_KEY = 'rgrid.webr.plotResolution.v1';
 const THEME_KEY = 'rgrid.webr.theme.v1';
 const FORMULA_HEIGHT_KEY = 'rgrid.webr.formulaHeight.v1';
+const FORMULA_COLLAPSED_HEIGHT = 44;
+const FORMULA_FALLBACK_EXPANDED_HEIGHT = 116;
 const FORMAT_VERSION = 6;
 const WEBR_MODULE_URL = 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
 const XLSX_MODULE_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs';
@@ -91,6 +93,7 @@ let displayValues = new Map();
 let plotsByCell = new Map();
 let cellElements = new Map();
 let previousSelectedAddresses = new Set();
+let previousActiveHeaderElements = [];
 let tooltipCell = null;
 let saveTimer = null;
 let selection = { r1: 1, c1: 1, r2: 1, c2: 1 };
@@ -105,7 +108,13 @@ let plotPaneWidth = (() => {
 let plotResolution = loadPlotResolution();
 let resizedSheetIds = new Set();
 let editingWorkbookName = null;
-let formulaEditorHeight = (() => { try { return Number(localStorage.getItem(FORMULA_HEIGHT_KEY)) || 44; } catch { return 44; } })();
+let formulaEditorHeight = (() => {
+  try { return Number(localStorage.getItem(FORMULA_HEIGHT_KEY)) || FORMULA_COLLAPSED_HEIGHT; }
+  catch { return FORMULA_COLLAPSED_HEIGHT; }
+})();
+let formulaExpandedHeight = formulaEditorHeight > FORMULA_COLLAPSED_HEIGHT
+  ? formulaEditorHeight
+  : FORMULA_FALLBACK_EXPANDED_HEIGHT;
 let formulaCodeMirror = null;
 const dragSelection = {
   active: false,
@@ -1218,11 +1227,12 @@ function beginPlotPaneResize(event) {
 
 function clampFormulaEditorHeight(height) {
   const maximum = Math.max(80, Math.min(window.innerHeight * 0.65, 720));
-  return Math.round(Math.min(maximum, Math.max(44, Number(height) || 44)));
+  return Math.round(Math.min(maximum, Math.max(FORMULA_COLLAPSED_HEIGHT, Number(height) || FORMULA_COLLAPSED_HEIGHT)));
 }
 
-function setFormulaEditorHeight(height, { persist = true } = {}) {
+function setFormulaEditorHeight(height, { persist = true, rememberExpanded = true } = {}) {
   formulaEditorHeight = clampFormulaEditorHeight(height);
+  if (rememberExpanded && formulaEditorHeight > FORMULA_COLLAPSED_HEIGHT) formulaExpandedHeight = formulaEditorHeight;
   els.formulaEditor.style.height = `${formulaEditorHeight}px`;
   if (formulaCodeMirror) formulaCodeMirror.setSize('100%', '100%');
   else {
@@ -1243,10 +1253,10 @@ function beginFormulaEditorResize(event) {
   const startHeight = els.formulaEditor.getBoundingClientRect().height;
   els.formulaEditorResizer.classList.add('dragging');
   els.formulaEditorResizer.setPointerCapture?.(event.pointerId);
-  const move = (moveEvent) => setFormulaEditorHeight(startHeight + moveEvent.clientY - startY, { persist: false });
+  const move = (moveEvent) => setFormulaEditorHeight(startHeight + moveEvent.clientY - startY, { persist: false, rememberExpanded: false });
   const finish = () => {
     els.formulaEditorResizer.classList.remove('dragging');
-    setFormulaEditorHeight(formulaEditorHeight, { persist: true });
+    setFormulaEditorHeight(formulaEditorHeight, { persist: true, rememberExpanded: formulaEditorHeight > FORMULA_COLLAPSED_HEIGHT });
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', finish);
     window.removeEventListener('pointercancel', finish);
@@ -1254,6 +1264,17 @@ function beginFormulaEditorResize(event) {
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', finish);
   window.addEventListener('pointercancel', finish);
+}
+
+function toggleFormulaEditorHeight() {
+  if (formulaEditorHeight <= FORMULA_COLLAPSED_HEIGHT) {
+    setFormulaEditorHeight(formulaExpandedHeight > FORMULA_COLLAPSED_HEIGHT
+      ? formulaExpandedHeight
+      : FORMULA_FALLBACK_EXPANDED_HEIGHT);
+  } else {
+    formulaExpandedHeight = formulaEditorHeight;
+    setFormulaEditorHeight(FORMULA_COLLAPSED_HEIGHT, { rememberExpanded: false });
+  }
 }
 
 function currentTheme() {
@@ -1520,6 +1541,7 @@ function buildGrid() {
   document.body.scrollLeft = 0;
   document.documentElement.scrollLeft = 0;
   previousSelectedAddresses.clear();
+  previousActiveHeaderElements = [];
   refreshGridValues();
   refreshSelection(true);
 }
@@ -1866,6 +1888,22 @@ async function bitmapToPlotRecord(bitmap) {
   return { width: canvas.width, height: canvas.height, dataUrl: canvas.toDataURL('image/png') };
 }
 
+function refreshActiveHeaders() {
+  for (const header of previousActiveHeaderElements) {
+    header.classList.remove('active-header');
+    header.removeAttribute('aria-current');
+  }
+  previousActiveHeaderElements = [];
+  const rowHeader = els.grid.querySelector(`.row-header[data-row="${selection.r1}"]`);
+  const columnHeader = els.grid.querySelector(`.col-header[data-col="${selection.c1}"]`);
+  for (const header of [rowHeader, columnHeader]) {
+    if (!header) continue;
+    header.classList.add('active-header');
+    header.setAttribute('aria-current', 'true');
+    previousActiveHeaderElements.push(header);
+  }
+}
+
 function refreshSelection(force = false) {
   if (!force) {
     for (const address of previousSelectedAddresses) {
@@ -1891,6 +1929,7 @@ function refreshSelection(force = false) {
   const activeAddress = toA1(selection.r1, selection.c1);
   const activeTd = cellElements.get(activeAddress);
   if (activeTd) activeTd.classList.add('active');
+  refreshActiveHeaders();
   previousSelectedAddresses = current;
   updateFormulaBar();
   updateSelectionSummary();
@@ -4250,11 +4289,11 @@ function bindEvents() {
     els.helpDialog.showModal();
   });
   els.formulaEditorResizer.addEventListener('pointerdown', beginFormulaEditorResize);
-  els.formulaEditorResizer.addEventListener('dblclick', () => setFormulaEditorHeight(44));
+  els.formulaEditorResizer.addEventListener('dblclick', toggleFormulaEditorHeight);
   els.formulaEditorResizer.addEventListener('keydown', (event) => {
     if (!['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
     event.preventDefault();
-    if (event.key === 'Home') setFormulaEditorHeight(44);
+    if (event.key === 'Home') setFormulaEditorHeight(FORMULA_COLLAPSED_HEIGHT, { rememberExpanded: false });
     else setFormulaEditorHeight(formulaEditorHeight + (event.key === 'ArrowDown' ? 24 : -24));
   });
   els.plotSettingsBtn.addEventListener('click', () => {
@@ -4291,7 +4330,7 @@ function bindEvents() {
   window.addEventListener('resize', () => {
     hideCellTooltip();
     setPlotPaneWidth(plotPaneWidth, { persist: false });
-    setFormulaEditorHeight(formulaEditorHeight, { persist: false });
+    setFormulaEditorHeight(formulaEditorHeight, { persist: false, rememberExpanded: false });
   });
   $('#addSheetBtn').addEventListener('click', addSheet);
   $('#renameSheetBtn').addEventListener('click', renameActiveSheet);
